@@ -1,0 +1,30 @@
+{
+  "name": "ai-agents-learning",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.12",
+    "@types/node": "^26.5.0",
+    "@types/react": "^19.2.18",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^4.0.60",
+    "@lmnr-ai/lmnr": "^0.8.45",
+    "@types/shelljs": "^0.10.0",
+    "ai": "^7.0.93",
+    "dotenv": "^17.4.2",
+    "ink": "^7.1.1",
+    "ink-spinner": "^5.0.0",
+    "react": "^19.2.8",
+    "shelljs": "^0.10.0",
+    "zod": "^4.5.4"
+  }
+}
