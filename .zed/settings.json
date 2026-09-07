@@ -1,0 +1,14 @@
+{
+  "format_on_save": "on",
+  "languages": {
+    "JavaScript": {
+      "language_servers": ["biome"],
+    },
+    "TypeScript": {
+      "language_servers": ["biome"],
+    },
+    "TSX": {
+      "language_servers": ["biome"],
+    },
+  },
+}
