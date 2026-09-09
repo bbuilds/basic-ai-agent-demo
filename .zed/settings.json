@@ -4,14 +4,8 @@
     "source.organizeImports": true,
   },
   "languages": {
-    "JavaScript": {
-      "language_servers": ["biome"],
-    },
-    "TypeScript": {
-      "language_servers": ["biome"],
-    },
-    "TSX": {
-      "language_servers": ["biome"],
-    },
+    "JavaScript": { "language_servers": ["biome", "vtsls"] },
+    "TypeScript": { "language_servers": ["biome", "vtsls"] },
+    "TSX": { "language_servers": ["biome", "vtsls"] },
   },
 }
