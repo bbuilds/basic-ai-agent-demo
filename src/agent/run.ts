@@ -1,8 +1,7 @@
 import "dotenv/config";
 import { openai } from "@ai-sdk/openai";
 import { Laminar, LaminarAiSdkTelemetry } from "@lmnr-ai/lmnr";
-import { generateText, type ModelMessage, registerTelemetry } from "ai";
-import type { AgentCallbacks } from "../types.ts";
+import { generateText, registerTelemetry } from "ai";
 import { SYSTEM_PROMPT } from "./system/prompt.ts";
 
 import { tools } from "./tools/index.ts";
@@ -13,8 +12,8 @@ registerTelemetry(new LaminarAiSdkTelemetry());
 
 export async function runAgent(
 	userMessage: string,
-	_conversationHistory: ModelMessage[],
-	_callbacks: AgentCallbacks,
+	// _conversationHistory: ModelMessage[],
+	// _callbacks: AgentCallbacks,
 	// biome-ignore lint/suspicious/noExplicitAny: @TODO remove after testing
 ): Promise<any> {
 	const { text, toolCalls } = await generateText({
