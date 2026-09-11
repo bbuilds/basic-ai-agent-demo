@@ -67,6 +67,7 @@ export const singleTurnExecutorWithMocks = async (
     tools,
     stopWhen: stepCountIs(1),
     temperature: data.config?.temperature ?? undefined,
+    allowSystemInMessages: true,
   });
 
   const toolCalls = rawToolCalls.map((call) => ({
