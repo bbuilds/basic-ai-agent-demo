@@ -6,7 +6,8 @@
   "author": "",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "eval:file-tools": "npx lmnr eval evals/file-tools.eval.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
