@@ -1,7 +1,7 @@
 import { openai } from "@ai-sdk/openai";
 import { generateText, stepCountIs, type ToolSet, tool } from "ai";
 import { z } from "zod";
-import type { EvalData } from "./types.ts";
+import type { EvalData, SingleTurnResult } from "./types.ts";
 import { buildMessages } from "./utils.ts";
 
 /**
@@ -46,7 +46,9 @@ const TOOL_DEFINITIONS: Record<
 };
 
 // A minimal single-turn chat
-export const singleTurnExecutor = async (data: EvalData) => {
+export const singleTurnExecutorWithMocks = async (
+  data: EvalData,
+): Promise<SingleTurnResult> => {
   const messages = buildMessages(data);
   const tools: ToolSet = {};
   for (const toolName of data.tools) {
@@ -59,7 +61,7 @@ export const singleTurnExecutor = async (data: EvalData) => {
     }
   }
 
-  const { toolCalls } = await generateText({
+  const { toolCalls: rawToolCalls } = await generateText({
     model: openai(data.config?.model ?? "gpt-5.6-luna"),
     messages,
     tools,
@@ -67,11 +69,11 @@ export const singleTurnExecutor = async (data: EvalData) => {
     temperature: data.config?.temperature ?? undefined,
   });
 
-  const calls = toolCalls.map((call) => ({
+  const toolCalls = rawToolCalls.map((call) => ({
     toolName: call.toolName,
     args: "args" in call ? call.args : {},
   }));
 
-  const toolNames = toolCalls.map((call) => call.toolName);
-  return { calls, toolNames, selectedAny: toolNames.length > 0 };
+  const toolNames = rawToolCalls.map((call) => call.toolName);
+  return { toolCalls, toolNames, selectedAny: toolNames.length > 0 };
 };
