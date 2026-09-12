@@ -9,7 +9,7 @@ import { SYSTEM_PROMPT } from "./system/prompt.ts";
 
 import { modelTools } from "./tools/index.ts";
 
-const MODEL_NAME = "gpt-5.6-luna";
+const MODEL_NAME = process.env.AGENT_MODEL ?? "gpt-5.6-luna";
 
 Laminar.initialize({ projectApiKey: process.env.LMNR_API_KEY });
 registerTelemetry(new LaminarAiSdkTelemetry());

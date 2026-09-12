@@ -62,7 +62,9 @@ export const singleTurnExecutorWithMocks = async (
   }
 
   const { toolCalls: rawToolCalls } = await generateText({
-    model: openai(data.config?.model ?? "gpt-5.6-luna"),
+    model: openai(
+      data.config?.model ?? process.env.AGENT_MODEL ?? "gpt-5.6-luna",
+    ),
     messages,
     tools,
     stopWhen: stepCountIs(1),
