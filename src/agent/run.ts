@@ -1,32 +1,109 @@
 import { openai } from "@ai-sdk/openai";
 import { Laminar, LaminarAiSdkTelemetry } from "@lmnr-ai/lmnr";
-import { generateText, registerTelemetry } from "ai";
+import { type ModelMessage, registerTelemetry, streamText } from "ai";
 import "dotenv/config";
+import type { AgentCallbacks, ToolCallInfo } from "../types.ts";
+import { executeTool } from "./executeTool.ts";
+import { filterCompatibleMessages } from "./system/filterMessages.ts";
 import { SYSTEM_PROMPT } from "./system/prompt.ts";
 
 import { tools } from "./tools/index.ts";
 
 const MODEL_NAME = "gpt-5.6-luna";
 
+Laminar.initialize({ projectApiKey: process.env.LMNR_API_KEY });
 registerTelemetry(new LaminarAiSdkTelemetry());
 
 export async function runAgent(
   userMessage: string,
-  // _conversationHistory: ModelMessage[],
-  // _callbacks: AgentCallbacks,
-  // biome-ignore lint/suspicious/noExplicitAny: @TODO remove after testing
-): Promise<any> {
-  const { text, toolCalls } = await generateText({
-    model: openai(MODEL_NAME),
-    prompt: userMessage,
-    system: SYSTEM_PROMPT,
-    tools,
-  });
+  conversationHistory: ModelMessage[],
+  callbacks: AgentCallbacks,
+): Promise<ModelMessage[]> {
+  const workingHistory = filterCompatibleMessages(conversationHistory);
+  const messages: ModelMessage[] = [
+    { role: "system", content: SYSTEM_PROMPT },
+    ...workingHistory,
+    { role: "user", content: userMessage },
+  ];
+  //entire response outside the loop
+  let fullResponse = "";
 
-  console.log("testing");
+  while (true) {
+    const result = streamText({
+      model: openai(MODEL_NAME),
+      messages,
+      tools,
+    });
+
+    const toolCalls: ToolCallInfo[] = [];
+    let currentText = "";
+    let streamError: Error | null = null;
+
+    try {
+      for await (const chunk of result.stream) {
+        if (chunk.type === "text-delta") {
+          currentText += chunk.text;
+          callbacks.onToken(chunk.text);
+        }
+        if (chunk.type === "tool-call") {
+          const input = chunk.input as Record<string, unknown>;
+          toolCalls.push({
+            toolCallId: chunk.toolCallId,
+            toolName: chunk.toolName,
+            args: input,
+          });
+          callbacks.onToolCallStart(chunk.toolName, input);
+        }
+      }
+    } catch (error) {
+      streamError = error as Error;
+      if (
+        !currentText &&
+        !streamError.message.includes("No output generated")
+      ) {
+        throw streamError;
+      }
+    }
+    fullResponse += currentText;
+
+    if (streamError && !currentText) {
+      fullResponse =
+        "I apologize, but I wasn't able to generate a response. The system is down";
+      callbacks.onToken(fullResponse);
+      messages.push({ role: "assistant", content: fullResponse });
+      break;
+    }
+
+    //finished reason
+    const finishReason = await result.finishReason;
+    const responseMessages = await result.responseMessages;
+    messages.push(...responseMessages);
+
+    if (finishReason !== "tool-calls" || toolCalls.length === 0) {
+      break;
+    }
+
+    for (const tc of toolCalls) {
+      const toolResult = await executeTool(tc.toolName, tc.args);
+      callbacks.onToolCallEnd(tc.toolName, toolResult);
+
+      messages.push({
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: tc.toolCallId,
+            toolName: tc.toolName,
+            output: { type: "text", value: toolResult },
+          },
+        ],
+      });
+    }
+  }
+
+  callbacks.onComplete(fullResponse);
+
+  return messages;
 }
 
-await runAgent("What time is it on Mars?");
-
-// Short-lived script: flush pending spans before the process exits.
 await Laminar.shutdown();
