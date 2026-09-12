@@ -111,11 +111,12 @@ export async function multiTurnWithMocks(
 ): Promise<MultiTurnResult> {
   const tools = buildMockedTools(data.mockTools);
 
-  // Build messages from either prompt or pre-filled history
-  const messages: ModelMessage[] = data.messages ?? [
-    { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: data.prompt! },
-  ];
+  const messages: ModelMessage[] = data.messages
+    ? [{ role: "system", content: SYSTEM_PROMPT }, ...data.messages]
+    : [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: data.prompt! },
+      ];
 
   try {
     const result = await generateText({
