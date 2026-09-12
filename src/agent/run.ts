@@ -7,12 +7,16 @@ import { executeTool } from "./executeTool.ts";
 import { filterCompatibleMessages } from "./system/filterMessages.ts";
 import { SYSTEM_PROMPT } from "./system/prompt.ts";
 
-import { tools } from "./tools/index.ts";
+import { modelTools } from "./tools/index.ts";
 
 const MODEL_NAME = "gpt-5.6-luna";
 
 Laminar.initialize({ projectApiKey: process.env.LMNR_API_KEY });
 registerTelemetry(new LaminarAiSdkTelemetry());
+
+export async function shutdownAgent(): Promise<void> {
+  await Laminar.shutdown();
+}
 
 export async function runAgent(
   userMessage: string,
@@ -32,7 +36,7 @@ export async function runAgent(
     const result = streamText({
       model: openai(MODEL_NAME),
       messages,
-      tools,
+      tools: modelTools,
       allowSystemInMessages: true,
     });
 
@@ -103,9 +107,6 @@ export async function runAgent(
   }
 
   callbacks.onComplete(fullResponse);
-
-  return messages;
+  const [, ...history] = messages;
+  return history;
 }
-
-// Short-lived script: flush pending spans before the process exits.
-await Laminar.shutdown();
