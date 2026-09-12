@@ -1,6 +1,6 @@
 import { evaluate } from "@lmnr-ai/lmnr";
 import dataset from "./data/file-tools.json" with { type: "json" };
-import { toolSelectionScore } from "./evaluator.ts";
+import { toolSelectionScore } from "./evaluators.ts";
 import { singleTurnExecutorWithMocks } from "./executors.ts";
 import type { EvalData, EvalTarget } from "./types.ts";
 
