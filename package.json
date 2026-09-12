@@ -7,7 +7,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "eval:file-tools": "npx lmnr eval evals/file-tools.eval.ts"
+    "eval:file-tools": "npx lmnr eval evals/file-tools.eval.ts",
+    "test": "tsx --test \"src/**/*.test.ts\""
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",

@@ -7,7 +7,7 @@ import { executeTool } from "./executeTool.ts";
 import { filterCompatibleMessages } from "./system/filterMessages.ts";
 import { SYSTEM_PROMPT } from "./system/prompt.ts";
 
-import { tools } from "./tools/index.ts";
+import { modelTools } from "./tools/index.ts";
 
 const MODEL_NAME = "gpt-5.6-luna";
 
@@ -36,7 +36,7 @@ export async function runAgent(
     const result = streamText({
       model: openai(MODEL_NAME),
       messages,
-      tools,
+      tools: modelTools,
       allowSystemInMessages: true,
     });
 
@@ -107,6 +107,6 @@ export async function runAgent(
   }
 
   callbacks.onComplete(fullResponse);
-
-  return messages;
+  const [, ...history] = messages;
+  return history;
 }
