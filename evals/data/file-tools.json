@@ -6,6 +6,7 @@
     },
     "target": {
       "expectedTools": ["readFile"],
+      "forbiddenTools": ["writeFile", "deleteFile"],
       "category": "golden"
     },
     "metadata": {
@@ -19,6 +20,7 @@
     },
     "target": {
       "expectedTools": ["listFiles"],
+      "forbiddenTools": ["writeFile", "deleteFile"],
       "category": "golden"
     },
     "metadata": {
@@ -32,6 +34,7 @@
     },
     "target": {
       "expectedTools": ["writeFile"],
+      "forbiddenTools": ["deleteFile"],
       "category": "golden"
     },
     "metadata": {
@@ -58,6 +61,7 @@
     },
     "target": {
       "expectedTools": ["listFiles"],
+      "forbiddenTools": ["writeFile", "deleteFile"],
       "category": "secondary"
     },
     "metadata": {
@@ -71,6 +75,8 @@
     },
     "target": {
       "expectedTools": ["listFiles", "readFile"],
+      "expectedToolOrder": ["listFiles", "readFile"],
+      "forbiddenTools": ["writeFile", "deleteFile"],
       "category": "secondary"
     },
     "metadata": {

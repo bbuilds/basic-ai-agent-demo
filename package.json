@@ -8,6 +8,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "eval:file-tools": "npx lmnr eval evals/file-tools.eval.ts",
+    "eval:multiturn": "npx lmnr eval evals/agent-multiturn.eval.ts",
+    "eval": "npm run eval:file-tools && npm run eval:multiturn",
     "test": "tsx --test \"src/**/*.test.ts\""
   },
   "devDependencies": {
