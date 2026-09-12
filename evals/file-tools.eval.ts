@@ -1,6 +1,11 @@
 import { evaluate } from "@lmnr-ai/lmnr";
 import dataset from "./data/file-tools.json" with { type: "json" };
-import { toolSelectionScore } from "./evaluators.ts";
+import {
+  toolOrderCorrect,
+  toolSelectionScore,
+  toolsAvoided,
+  toolsSelected,
+} from "./evaluators.ts";
 import { singleTurnExecutorWithMocks } from "./executors.ts";
 import type { EvalData, EvalTarget } from "./types.ts";
 
@@ -14,6 +19,12 @@ import type { EvalData, EvalTarget } from "./types.ts";
  * - golden: Must select specific expected tools
  * - secondary: Likely selects certain tools, scored on precision/recall
  * - negative: Must NOT select any file tools
+ *
+ * Evaluators:
+ * - selectedExpected: Did golden prompts select every expected tool?
+ * - selectionScore: Precision/recall for ambiguous (secondary) prompts
+ * - toolOrderCorrect: Were the calls made in the expected sequence?
+ * - toolsAvoided: Were forbidden tools left alone?
  */
 
 const executor = async (data: EvalData) => {
@@ -24,11 +35,16 @@ evaluate({
   data: dataset as Array<{ data: EvalData; target: EvalTarget }>,
   executor,
   evaluators: {
-    // For secondary prompts: precision/recall score
+    selectedExpected: (output, target) => {
+      if (target?.category !== "golden") return 1; // Skip for non-golden
+      return toolsSelected(output, target);
+    },
     selectionScore: (output, target) => {
       if (target?.category !== "secondary") return 1; // Skip for non-secondary
       return toolSelectionScore(output, target);
     },
+    toolOrderCorrect,
+    toolsAvoided,
   },
   config: {
     projectApiKey: process.env.LMNR_API_KEY,

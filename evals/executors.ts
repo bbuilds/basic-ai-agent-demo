@@ -127,6 +127,7 @@ export async function multiTurnWithMocks(
       tools,
       stopWhen: stepCountIs(data.config?.maxSteps ?? 20),
       temperature: data.config?.temperature ?? undefined,
+      allowSystemInMessages: true,
     });
 
     // Extract all tool calls in order from steps

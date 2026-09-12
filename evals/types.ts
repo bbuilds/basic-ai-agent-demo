@@ -19,6 +19,8 @@ export interface EvalData {
  */
 export interface EvalTarget {
   expectedTools?: string[];
+  /** Ordered subsequence the tool calls must follow. Order is checked, adjacency is not. */
+  expectedToolOrder?: string[];
   forbiddenTools?: string[];
   category: "golden" | "secondary" | "negative";
 }
@@ -66,7 +68,6 @@ export interface MultiTurnTarget {
   forbiddenTools?: string[];
   mockToolResults: Record<string, string>;
   category: "task-completion" | "conversation-continuation" | "negative";
-  /** Overrides the default scoring rubric passed to the LLM judge. */
   rubric?: string;
 }
 

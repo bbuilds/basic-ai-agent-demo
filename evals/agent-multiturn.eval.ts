@@ -1,6 +1,6 @@
 import { evaluate } from "@lmnr-ai/lmnr";
 import dataset from "./data/agent-multiturn.json" with { type: "json" };
-import { llmJudge } from "./evaluators.ts";
+import { llmJudge, toolOrderCorrect, toolsAvoided } from "./evaluators.ts";
 import { multiTurnWithMocks } from "./executors.ts";
 import type {
   MultiTurnEvalData,
@@ -24,7 +24,6 @@ import type {
  * - llmJudge: Does the final response make sense given the task and results?
  */
 
-// Executor that runs multi-turn agent with mocked tools
 const executor = async (data: MultiTurnEvalData): Promise<MultiTurnResult> => {
   return multiTurnWithMocks(data);
 };
@@ -37,6 +36,8 @@ evaluate({
   }>,
   executor,
   evaluators: {
+    toolOrderCorrect,
+    toolsAvoided,
     outputQuality: async (output, target) => {
       if (!target) return 1;
       return llmJudge(output, target);

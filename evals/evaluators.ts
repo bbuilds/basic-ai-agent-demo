@@ -55,13 +55,10 @@ export async function llmJudge(
           reasoningEffort: "high",
         },
       },
-      messages: [
-        {
-          role: "system",
-          content: `You are an evaluation judge. Score the agent's response on a scale of 1-10.
+      system: `You are an evaluation judge. Score the agent's response on a scale of 1-10.
 
 ${target.rubric ?? DEFAULT_RUBRIC}`,
-        },
+      messages: [
         {
           role: "user",
           content: `Task: ${target.originalTask}
@@ -109,4 +106,82 @@ export function toolSelectionScore(
   // Simple F1-ish score
   if (precision + recall === 0) return 0;
   return (2 * precision * recall) / (precision + recall);
+}
+
+/**
+ * Shared accessors so the tool-usage evaluators below work against either
+ * result/target shape (single-turn selection or full multi-turn agent runs).
+ */
+type AnyResult = SingleTurnResult | MultiTurnResult;
+type AnyTarget = EvalTarget | MultiTurnTarget;
+
+/** Unique tool names the model reached for. */
+function selectedTools(output: AnyResult): Set<string> {
+  return new Set("toolNames" in output ? output.toolNames : output.toolsUsed);
+}
+
+/** Tool names in call order. Single-turn calls are already ordered within the step. */
+function callOrder(output: AnyResult): string[] {
+  return "toolCallOrder" in output ? output.toolCallOrder : output.toolNames;
+}
+
+/** The unordered expectation, falling back to the ordered one when only that is given. */
+function expectedSet(target: AnyTarget): string[] | undefined {
+  if ("expectedTools" in target && target.expectedTools?.length) {
+    return target.expectedTools;
+  }
+  return target.expectedToolOrder;
+}
+
+/**
+ * Evaluator: Were all expected tools selected?
+ * Returns 1 only if every expected tool appears in the output, 0 otherwise.
+ * For golden prompts. Extra tools are not penalized here - use
+ * `toolSelectionScore` for precision or `toolsAvoided` for hard exclusions.
+ */
+export function toolsSelected(output: AnyResult, target: AnyTarget): number {
+  const expected = expectedSet(target);
+  if (!expected?.length) return 1;
+
+  const selected = selectedTools(output);
+  return expected.every((t) => selected.has(t)) ? 1 : 0;
+}
+
+/**
+ * Evaluator: Were forbidden tools avoided?
+ * Returns 1 if NONE of the forbidden tools were called, 0 otherwise.
+ * For negative prompts, and for golden prompts that must not take a
+ * destructive action (e.g. a read request that must never call deleteFile).
+ */
+export function toolsAvoided(output: AnyResult, target?: AnyTarget): number {
+  if (!target?.forbiddenTools?.length) return 1;
+
+  const selected = selectedTools(output);
+  return target.forbiddenTools.some((t) => selected.has(t)) ? 0 : 1;
+}
+
+/**
+ * Evaluator: Were tools called in the expected order?
+ * Returns the fraction of the expected sequence matched as a subsequence of the
+ * actual calls - order matters, adjacency does not, so unrelated tool calls
+ * interleaved between the expected ones are tolerated.
+ *
+ * Scores 1 when the target declares no `expectedToolOrder`, and 0 when an order
+ * is expected but no tools were called at all.
+ */
+export function toolOrderCorrect(output: AnyResult, target?: AnyTarget): number {
+  const expected = target?.expectedToolOrder;
+  if (!expected?.length) return 1;
+
+  const actual = callOrder(output);
+
+  let expectedIdx = 0;
+  for (const toolName of actual) {
+    if (toolName === expected[expectedIdx]) {
+      expectedIdx++;
+      if (expectedIdx === expected.length) break;
+    }
+  }
+
+  return expectedIdx / expected.length;
 }
