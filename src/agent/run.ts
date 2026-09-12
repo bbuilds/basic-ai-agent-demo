@@ -14,6 +14,10 @@ const MODEL_NAME = "gpt-5.6-luna";
 Laminar.initialize({ projectApiKey: process.env.LMNR_API_KEY });
 registerTelemetry(new LaminarAiSdkTelemetry());
 
+export async function shutdownAgent(): Promise<void> {
+  await Laminar.shutdown();
+}
+
 export async function runAgent(
   userMessage: string,
   conversationHistory: ModelMessage[],
@@ -106,6 +110,3 @@ export async function runAgent(
 
   return messages;
 }
-
-// Short-lived script: flush pending spans before the process exits.
-await Laminar.shutdown();
