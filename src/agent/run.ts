@@ -33,6 +33,7 @@ export async function runAgent(
       model: openai(MODEL_NAME),
       messages,
       tools,
+      allowSystemInMessages: true,
     });
 
     const toolCalls: ToolCallInfo[] = [];
@@ -106,4 +107,5 @@ export async function runAgent(
   return messages;
 }
 
+// Short-lived script: flush pending spans before the process exits.
 await Laminar.shutdown();
