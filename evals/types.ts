@@ -53,6 +53,7 @@ export interface MultiTurnEvalData {
   config?: {
     model?: string;
     maxSteps?: number;
+    temperature?: number;
   };
 }
 
@@ -65,6 +66,8 @@ export interface MultiTurnTarget {
   forbiddenTools?: string[];
   mockToolResults: Record<string, string>;
   category: "task-completion" | "conversation-continuation" | "negative";
+  /** Overrides the default scoring rubric passed to the LLM judge. */
+  rubric?: string;
 }
 
 /**

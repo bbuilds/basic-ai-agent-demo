@@ -1,8 +1,20 @@
 import { openai } from "@ai-sdk/openai";
-import { generateText, stepCountIs, type ToolSet, tool } from "ai";
+import {
+  generateText,
+  type ModelMessage,
+  stepCountIs,
+  type ToolSet,
+  tool,
+} from "ai";
 import { z } from "zod";
-import type { EvalData, SingleTurnResult } from "./types.ts";
-import { buildMessages } from "./utils.ts";
+import { SYSTEM_PROMPT } from "../src/agent/system/prompt.ts";
+import type {
+  EvalData,
+  MultiTurnEvalData,
+  MultiTurnResult,
+  SingleTurnResult,
+} from "./types.ts";
+import { buildMessages, buildMockedTools } from "./utils.ts";
 
 /**
  * Tool definitions for mocked single-turn evaluations.
@@ -61,22 +73,100 @@ export const singleTurnExecutorWithMocks = async (
     }
   }
 
-  const { toolCalls: rawToolCalls } = await generateText({
-    model: openai(
-      data.config?.model ?? process.env.AGENT_MODEL ?? "gpt-5.6-luna",
-    ),
-    messages,
-    tools,
-    stopWhen: stepCountIs(1),
-    temperature: data.config?.temperature ?? undefined,
-    allowSystemInMessages: true,
-  });
+  try {
+    const { toolCalls: rawToolCalls } = await generateText({
+      model: openai(
+        data.config?.model ?? process.env.AGENT_MODEL ?? "gpt-5.6-luna",
+      ),
+      messages,
+      tools,
+      stopWhen: stepCountIs(1),
+      temperature: data.config?.temperature ?? undefined,
+      allowSystemInMessages: true,
+    });
 
-  const toolCalls = rawToolCalls.map((call) => ({
-    toolName: call.toolName,
-    args: "args" in call ? call.args : {},
-  }));
+    const toolCalls = rawToolCalls.map((call) => ({
+      toolName: call.toolName,
+      args: call.input,
+    }));
 
-  const toolNames = rawToolCalls.map((call) => call.toolName);
-  return { toolCalls, toolNames, selectedAny: toolNames.length > 0 };
+    const toolNames = rawToolCalls.map((call) => call.toolName);
+    return { toolCalls, toolNames, selectedAny: toolNames.length > 0 };
+  } catch (err) {
+    throw new Error(
+      `singleTurnExecutorWithMocks failed for prompt "${data.prompt}": ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+      { cause: err },
+    );
+  }
 };
+
+/**
+ * Multi-turn executor with mocked tools.
+ * Runs a complete agent loop with tools returning fixed values.
+ */
+export async function multiTurnWithMocks(
+  data: MultiTurnEvalData,
+): Promise<MultiTurnResult> {
+  const tools = buildMockedTools(data.mockTools);
+
+  // Build messages from either prompt or pre-filled history
+  const messages: ModelMessage[] = data.messages ?? [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: data.prompt! },
+  ];
+
+  try {
+    const result = await generateText({
+      model: openai(
+        data.config?.model ?? process.env.AGENT_MODEL ?? "gpt-5.6-luna",
+      ),
+      messages,
+      tools,
+      stopWhen: stepCountIs(data.config?.maxSteps ?? 20),
+      temperature: data.config?.temperature ?? undefined,
+    });
+
+    // Extract all tool calls in order from steps
+    const allToolCalls: string[] = [];
+    const steps = result.steps.map((step) => {
+      const stepToolCalls = (step.toolCalls ?? []).map((tc) => {
+        allToolCalls.push(tc.toolName);
+        return {
+          toolName: tc.toolName,
+          args: tc.input,
+        };
+      });
+
+      const stepToolResults = (step.toolResults ?? []).map((tr) => ({
+        toolName: tr.toolName,
+        result: tr.output,
+      }));
+
+      return {
+        toolCalls: stepToolCalls.length > 0 ? stepToolCalls : undefined,
+        toolResults: stepToolResults.length > 0 ? stepToolResults : undefined,
+        text: step.text || undefined,
+      };
+    });
+
+    // Extract unique tools used
+    const toolsUsed = [...new Set(allToolCalls)];
+
+    return {
+      text: result.text,
+      steps,
+      toolsUsed,
+      toolCallOrder: allToolCalls,
+    };
+  } catch (err) {
+    const label = data.prompt ?? "(pre-filled message history)";
+    throw new Error(
+      `multiTurnWithMocks failed for prompt "${label}": ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+      { cause: err },
+    );
+  }
+}
