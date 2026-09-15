@@ -5,6 +5,9 @@
   "license": "ISC",
   "author": "",
   "type": "module",
+  "bin": {
+    "demo-agent": "./dist/cli.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "eval:file-tools": "npx lmnr eval evals/file-tools.eval.ts",

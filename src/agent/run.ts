@@ -1,8 +1,20 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { openai } from "@ai-sdk/openai";
 import { Laminar, LaminarAiSdkTelemetry } from "@lmnr-ai/lmnr";
 import { type ModelMessage, registerTelemetry, streamText } from "ai";
-import "dotenv/config";
+import dotenv from "dotenv";
 import type { AgentCallbacks, ToolCallInfo } from "../types.ts";
+
+// Load the .env that ships next to this package, so `demo-agent` works when
+// installed globally and run from any directory (not just the repo root).
+// `dist/agent/run.js` -> `<package root>/.env`
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(moduleDir, "../../.env"), quiet: true });
+// If the caller's cwd also has a .env (e.g. running from inside the repo
+// during development), let it override the bundled one.
+dotenv.config({ override: true, quiet: true });
+
 import { executeTool } from "./executeTool.ts";
 import { filterCompatibleMessages } from "./system/filterMessages.ts";
 import { SYSTEM_PROMPT } from "./system/prompt.ts";
