@@ -1,9 +1,14 @@
 import type { ToolSet } from "ai";
 import { getDateTime } from "./dateTime.ts";
+import { deleteFile, listFiles, readFile, writeFile } from "./file.ts";
 
 // All tools combined for the agent
 export const tools = {
   getDateTime,
+  deleteFile,
+  listFiles,
+  readFile,
+  writeFile,
 };
 
 /**
