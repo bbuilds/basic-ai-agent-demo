@@ -1,6 +1,7 @@
 import type { ToolSet } from "ai";
 import { getDateTime } from "./dateTime.ts";
 import { deleteFile, listFiles, readFile, writeFile } from "./file.ts";
+import { webSearch } from "./webSearch.ts";
 
 // All tools combined for the agent
 export const tools = {
@@ -9,6 +10,7 @@ export const tools = {
   listFiles,
   readFile,
   writeFile,
+  webSearch,
 };
 
 /**
