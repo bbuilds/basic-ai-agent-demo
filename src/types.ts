@@ -21,3 +21,9 @@ export interface ToolCallInfo {
   toolName: string;
   args: Record<string, unknown>;
 }
+
+export interface ModelLimits {
+  inputLimit: number;
+  outputLimit: number;
+  contextWindow: number;
+}
