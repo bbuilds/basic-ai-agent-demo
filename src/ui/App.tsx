@@ -2,6 +2,7 @@ import type { ModelMessage } from "ai";
 import { Box, useApp } from "ink";
 import { useCallback, useRef, useState } from "react";
 import { runAgent } from "../agent/run.ts";
+import type { TokenUsageInfo } from "../types.ts";
 import { Input } from "./components/Input.tsx";
 import {
   Message,
@@ -9,6 +10,7 @@ import {
   type TranscriptItem,
 } from "./components/MessageList.tsx";
 import { Spinner } from "./components/Spinner.tsx";
+import { TokenUsage } from "./components/TokenUsage.tsx";
 import { ToolCall, type ToolCallProps } from "./components/ToolCall.tsx";
 
 interface ActiveToolCall extends ToolCallProps {
@@ -27,6 +29,7 @@ export function App() {
   const [isBusy, setIsBusy] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [activeToolCalls, setActiveToolCalls] = useState<ActiveToolCall[]>([]);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsageInfo | null>(null);
 
   // Refs are the source of truth inside agent callbacks; state mirrors them for rendering.
   const streamBuffer = useRef("");
@@ -110,6 +113,7 @@ export function App() {
             activeRef.current = [];
             syncActive();
           },
+          onTokenUsage: setTokenUsage,
         });
 
         setHistory(nextHistory);
@@ -160,6 +164,10 @@ export function App() {
 
         <Box marginTop={1}>
           <Input onSubmit={handleSubmit} isBusy={isBusy} />
+        </Box>
+
+        <Box marginTop={1}>
+          <TokenUsage usage={tokenUsage} />
         </Box>
       </Box>
     </Box>
