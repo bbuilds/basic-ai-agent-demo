@@ -6,6 +6,15 @@ import { type ModelMessage, registerTelemetry, streamText } from "ai";
 import dotenv from "dotenv";
 import type { AgentCallbacks, ToolCallInfo } from "../types.ts";
 
+import {
+  calculateUsagePercentage,
+  compactConversation,
+  DEFAULT_THRESHOLD,
+  estimateMessagesTokens,
+  getModelLimits,
+  isOverThreshold,
+} from "./context/index.ts";
+
 // Load the .env that ships next to this package, so `demo-agent` works when
 // installed globally and run from any directory (not just the repo root).
 // `dist/agent/run.js` -> `<package root>/.env`
@@ -35,13 +44,25 @@ export async function runAgent(
   conversationHistory: ModelMessage[],
   callbacks: AgentCallbacks,
 ): Promise<ModelMessage[]> {
-  const workingHistory = filterCompatibleMessages(conversationHistory);
+  const modelLimits = getModelLimits(MODEL_NAME);
+  let workingHistory = filterCompatibleMessages(conversationHistory);
+
   const messages: ModelMessage[] = [
     { role: "system", content: SYSTEM_PROMPT },
     ...workingHistory,
     { role: "user", content: userMessage },
   ];
-  //entire response outside the loop
+
+  const preCheckTokens = estimateMessagesTokens([
+    { role: "system", content: SYSTEM_PROMPT },
+    ...workingHistory,
+    { role: "user", content: userMessage },
+  ]);
+
+  if (isOverThreshold(preCheckTokens.total, modelLimits.contextWindow)) {
+    workingHistory = await compactConversation(workingHistory, MODEL_NAME);
+  }
+
   let fullResponse = "";
 
   while (true) {
@@ -51,6 +72,23 @@ export async function runAgent(
       tools: modelTools,
       allowSystemInMessages: true,
     });
+
+    const reportTokenUsage = () => {
+      if (callbacks.onTokenUsage) {
+        const usage = estimateMessagesTokens(messages);
+        callbacks.onTokenUsage({
+          inputTokens: usage.input,
+          outputTokens: usage.output,
+          totalTokens: usage.total,
+          contextWindow: modelLimits.contextWindow,
+          threshold: DEFAULT_THRESHOLD,
+          percentage: calculateUsagePercentage(
+            usage.total,
+            modelLimits.contextWindow,
+          ),
+        });
+      }
+    };
 
     const toolCalls: ToolCallInfo[] = [];
     let currentText = "";
@@ -95,6 +133,7 @@ export async function runAgent(
     const finishReason = await result.finishReason;
     const responseMessages = await result.responseMessages;
     messages.push(...responseMessages);
+    reportTokenUsage();
 
     if (finishReason !== "tool-calls" || toolCalls.length === 0) {
       break;
