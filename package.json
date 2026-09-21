@@ -1,41 +1,41 @@
 {
-  "name": "ai-agents-learning",
-  "version": "1.0.0",
-  "description": "",
-  "license": "ISC",
-  "author": "",
-  "type": "module",
-  "bin": {
-    "demo-agent": "./dist/cli.js"
-  },
-  "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "eval:file-tools": "npx lmnr eval evals/file-tools.eval.ts",
-    "eval:multiturn": "npx lmnr eval evals/agent-multiturn.eval.ts",
-    "eval": "npm run eval:file-tools && npm run eval:multiturn",
-    "test": "tsx --test \"src/**/*.test.ts\"",
-    "format": "biome format --write .",
-    "format:check": "biome format .",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write ."
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.5.12",
-    "@types/node": "^26.5.0",
-    "@types/react": "^19.2.18",
-    "@types/shelljs": "^0.10.0",
-    "tsx": "^4.23.13",
-    "typescript": "^7.0.2"
-  },
-  "dependencies": {
-    "@ai-sdk/openai": "^4.0.60",
-    "@lmnr-ai/lmnr": "^0.8.45",
-    "ai": "^7.0.93",
-    "dotenv": "^17.4.2",
-    "ink": "^7.1.1",
-    "ink-spinner": "^5.0.0",
-    "react": "^19.2.8",
-    "shelljs": "^0.10.0",
-    "zod": "^4.5.4"
-  }
+	"name": "ai-agents-learning",
+	"version": "1.0.0",
+	"description": "",
+	"license": "ISC",
+	"author": "",
+	"type": "module",
+	"bin": {
+		"demo-agent": "./dist/cli.js"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"eval:file-tools": "npx lmnr eval evals/file-tools.eval.ts",
+		"eval:multiturn": "npx lmnr eval evals/agent-multiturn.eval.ts",
+		"eval": "npm run eval:file-tools && npm run eval:multiturn",
+		"test": "tsx --test \"src/**/*.test.ts\"",
+		"format": "biome format --write .",
+		"format:check": "biome format .",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.12",
+		"@types/node": "^26.5.0",
+		"@types/react": "^19.2.18",
+		"@types/shelljs": "^0.10.0",
+		"tsx": "^4.23.13",
+		"typescript": "^7.0.2"
+	},
+	"dependencies": {
+		"@ai-sdk/openai": "^4.0.60",
+		"@lmnr-ai/lmnr": "^0.8.45",
+		"ai": "^7.0.93",
+		"dotenv": "^17.4.2",
+		"ink": "^7.1.1",
+		"ink-spinner": "^5.0.0",
+		"react": "^19.2.8",
+		"shelljs": "^0.10.0",
+		"zod": "^4.5.4"
+	}
 }

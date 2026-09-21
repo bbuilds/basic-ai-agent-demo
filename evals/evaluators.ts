@@ -2,19 +2,19 @@ import { openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import type {
-  EvalTarget,
-  MultiTurnResult,
-  MultiTurnTarget,
-  SingleTurnResult,
+	EvalTarget,
+	MultiTurnResult,
+	MultiTurnTarget,
+	SingleTurnResult,
 } from "./types";
 
 const judgeSchema = z.object({
-  score: z
-    .number()
-    .min(1)
-    .max(10)
-    .describe("Score from 1-10 where 10 is perfect"),
-  reason: z.string().describe("Succinct reason for the score"),
+	score: z
+		.number()
+		.min(1)
+		.max(10)
+		.describe("Score from 1-10 where 10 is perfect"),
+	reason: z.string().describe("Succinct reason for the score"),
 });
 
 const DEFAULT_RUBRIC = `Scoring criteria:
@@ -29,39 +29,39 @@ const DEFAULT_RUBRIC = `Scoring criteria:
  * Returns a score from 0-1 (internally uses 1-10 scale divided by 10).
  */
 export async function llmJudge(
-  output: MultiTurnResult,
-  target: MultiTurnTarget,
+	output: MultiTurnResult,
+	target: MultiTurnTarget,
 ): Promise<number> {
-  const toolActivity = output.steps.flatMap((step) => {
-    const calls = step.toolCalls ?? [];
-    const results = step.toolResults ?? [];
-    return calls.map((call) => ({
-      toolName: call.toolName,
-      args: call.args,
-      result: results.find((r) => r.toolName === call.toolName)?.result,
-    }));
-  });
+	const toolActivity = output.steps.flatMap((step) => {
+		const calls = step.toolCalls ?? [];
+		const results = step.toolResults ?? [];
+		return calls.map((call) => ({
+			toolName: call.toolName,
+			args: call.args,
+			result: results.find((r) => r.toolName === call.toolName)?.result,
+		}));
+	});
 
-  try {
-    const result = await generateText({
-      model: openai(process.env.JUDGE_MODEL ?? "gpt-5.6-terra"),
-      output: Output.object({
-        schema: judgeSchema,
-        name: "evaluation",
-        description: "Evaluation of an AI agent response",
-      }),
-      providerOptions: {
-        openai: {
-          reasoningEffort: "high",
-        },
-      },
-      system: `You are an evaluation judge. Score the agent's response on a scale of 1-10.
+	try {
+		const result = await generateText({
+			model: openai(process.env.JUDGE_MODEL ?? "gpt-5.6-terra"),
+			output: Output.object({
+				schema: judgeSchema,
+				name: "evaluation",
+				description: "Evaluation of an AI agent response",
+			}),
+			providerOptions: {
+				openai: {
+					reasoningEffort: "high",
+				},
+			},
+			system: `You are an evaluation judge. Score the agent's response on a scale of 1-10.
 
 ${target.rubric ?? DEFAULT_RUBRIC}`,
-      messages: [
-        {
-          role: "user",
-          content: `Task: ${target.originalTask}
+			messages: [
+				{
+					role: "user",
+					content: `Task: ${target.originalTask}
 
 Tool calls and results (in order): ${JSON.stringify(toolActivity)}
 
@@ -69,18 +69,18 @@ Agent's final response:
 ${output.text}
 
 Evaluate if this response correctly uses the tool results to answer the task.`,
-        },
-      ],
-    });
-    return result.output.score / 10;
-  } catch (err) {
-    throw new Error(
-      `llmJudge failed for task "${target.originalTask}": ${
-        err instanceof Error ? err.message : String(err)
-      }`,
-      { cause: err },
-    );
-  }
+				},
+			],
+		});
+		return result.output.score / 10;
+	} catch (err) {
+		throw new Error(
+			`llmJudge failed for task "${target.originalTask}": ${
+				err instanceof Error ? err.message : String(err)
+			}`,
+			{ cause: err },
+		);
+	}
 }
 
 /**
@@ -89,23 +89,23 @@ Evaluate if this response correctly uses the tool results to answer the task.`,
  * For secondary prompts.
  */
 export function toolSelectionScore(
-  output: SingleTurnResult,
-  target: EvalTarget,
+	output: SingleTurnResult,
+	target: EvalTarget,
 ): number {
-  if (!target.expectedTools?.length) {
-    return output.selectedAny ? 0.5 : 1;
-  }
+	if (!target.expectedTools?.length) {
+		return output.selectedAny ? 0.5 : 1;
+	}
 
-  const expected = new Set(target.expectedTools);
-  const selected = new Set(output.toolNames);
+	const expected = new Set(target.expectedTools);
+	const selected = new Set(output.toolNames);
 
-  const hits = output.toolNames.filter((t) => expected.has(t)).length;
-  const precision = selected.size > 0 ? hits / selected.size : 0;
-  const recall = expected.size > 0 ? hits / expected.size : 0;
+	const hits = output.toolNames.filter((t) => expected.has(t)).length;
+	const precision = selected.size > 0 ? hits / selected.size : 0;
+	const recall = expected.size > 0 ? hits / expected.size : 0;
 
-  // Simple F1-ish score
-  if (precision + recall === 0) return 0;
-  return (2 * precision * recall) / (precision + recall);
+	// Simple F1-ish score
+	if (precision + recall === 0) return 0;
+	return (2 * precision * recall) / (precision + recall);
 }
 
 /**
@@ -117,20 +117,20 @@ type AnyTarget = EvalTarget | MultiTurnTarget;
 
 /** Unique tool names the model reached for. */
 function selectedTools(output: AnyResult): Set<string> {
-  return new Set("toolNames" in output ? output.toolNames : output.toolsUsed);
+	return new Set("toolNames" in output ? output.toolNames : output.toolsUsed);
 }
 
 /** Tool names in call order. Single-turn calls are already ordered within the step. */
 function callOrder(output: AnyResult): string[] {
-  return "toolCallOrder" in output ? output.toolCallOrder : output.toolNames;
+	return "toolCallOrder" in output ? output.toolCallOrder : output.toolNames;
 }
 
 /** The unordered expectation, falling back to the ordered one when only that is given. */
 function expectedSet(target: AnyTarget): string[] | undefined {
-  if ("expectedTools" in target && target.expectedTools?.length) {
-    return target.expectedTools;
-  }
-  return target.expectedToolOrder;
+	if ("expectedTools" in target && target.expectedTools?.length) {
+		return target.expectedTools;
+	}
+	return target.expectedToolOrder;
 }
 
 /**
@@ -140,11 +140,11 @@ function expectedSet(target: AnyTarget): string[] | undefined {
  * `toolSelectionScore` for precision or `toolsAvoided` for hard exclusions.
  */
 export function toolsSelected(output: AnyResult, target: AnyTarget): number {
-  const expected = expectedSet(target);
-  if (!expected?.length) return 1;
+	const expected = expectedSet(target);
+	if (!expected?.length) return 1;
 
-  const selected = selectedTools(output);
-  return expected.every((t) => selected.has(t)) ? 1 : 0;
+	const selected = selectedTools(output);
+	return expected.every((t) => selected.has(t)) ? 1 : 0;
 }
 
 /**
@@ -154,10 +154,10 @@ export function toolsSelected(output: AnyResult, target: AnyTarget): number {
  * destructive action (e.g. a read request that must never call deleteFile).
  */
 export function toolsAvoided(output: AnyResult, target?: AnyTarget): number {
-  if (!target?.forbiddenTools?.length) return 1;
+	if (!target?.forbiddenTools?.length) return 1;
 
-  const selected = selectedTools(output);
-  return target.forbiddenTools.some((t) => selected.has(t)) ? 0 : 1;
+	const selected = selectedTools(output);
+	return target.forbiddenTools.some((t) => selected.has(t)) ? 0 : 1;
 }
 
 /**
@@ -169,19 +169,22 @@ export function toolsAvoided(output: AnyResult, target?: AnyTarget): number {
  * Scores 1 when the target declares no `expectedToolOrder`, and 0 when an order
  * is expected but no tools were called at all.
  */
-export function toolOrderCorrect(output: AnyResult, target?: AnyTarget): number {
-  const expected = target?.expectedToolOrder;
-  if (!expected?.length) return 1;
+export function toolOrderCorrect(
+	output: AnyResult,
+	target?: AnyTarget,
+): number {
+	const expected = target?.expectedToolOrder;
+	if (!expected?.length) return 1;
 
-  const actual = callOrder(output);
+	const actual = callOrder(output);
 
-  let expectedIdx = 0;
-  for (const toolName of actual) {
-    if (toolName === expected[expectedIdx]) {
-      expectedIdx++;
-      if (expectedIdx === expected.length) break;
-    }
-  }
+	let expectedIdx = 0;
+	for (const toolName of actual) {
+		if (toolName === expected[expectedIdx]) {
+			expectedIdx++;
+			if (expectedIdx === expected.length) break;
+		}
+	}
 
-  return expectedIdx / expected.length;
+	return expectedIdx / expected.length;
 }

@@ -1,29 +1,29 @@
 export interface TokenUsageInfo {
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-  contextWindow: number;
-  threshold: number;
-  percentage: number;
+	inputTokens: number;
+	outputTokens: number;
+	totalTokens: number;
+	contextWindow: number;
+	threshold: number;
+	percentage: number;
 }
 
 export interface AgentCallbacks {
-  onToken: (token: string) => void;
-  onToolCallStart: (name: string, args: unknown) => void;
-  onToolCallEnd: (name: string, result: string) => void;
-  onComplete: (response: string) => void;
-  onToolApproval?: (name: string, args: unknown) => Promise<boolean>;
-  onTokenUsage?: (usage: TokenUsageInfo) => void;
+	onToken: (token: string) => void;
+	onToolCallStart: (name: string, args: unknown) => void;
+	onToolCallEnd: (name: string, result: string) => void;
+	onComplete: (response: string) => void;
+	onToolApproval?: (name: string, args: unknown) => Promise<boolean>;
+	onTokenUsage?: (usage: TokenUsageInfo) => void;
 }
 
 export interface ToolCallInfo {
-  toolCallId: string;
-  toolName: string;
-  args: Record<string, unknown>;
+	toolCallId: string;
+	toolName: string;
+	args: Record<string, unknown>;
 }
 
 export interface ModelLimits {
-  inputLimit: number;
-  outputLimit: number;
-  contextWindow: number;
+	inputLimit: number;
+	outputLimit: number;
+	contextWindow: number;
 }
