@@ -47,21 +47,18 @@ export async function runAgent(
 	const modelLimits = getModelLimits(MODEL_NAME);
 	let workingHistory = filterCompatibleMessages(conversationHistory);
 
-	const messages: ModelMessage[] = [
+	const buildMessages = (history: ModelMessage[]): ModelMessage[] => [
 		{ role: "system", content: SYSTEM_PROMPT },
-		...workingHistory,
+		...history,
 		{ role: "user", content: userMessage },
 	];
 
-	const preCheckTokens = estimateMessagesTokens([
-		{ role: "system", content: SYSTEM_PROMPT },
-		...workingHistory,
-		{ role: "user", content: userMessage },
-	]);
-
-	if (isOverThreshold(preCheckTokens.total, modelLimits.contextWindow)) {
+	const preCheckTokens = estimateMessagesTokens(buildMessages(workingHistory));
+	if (isOverThreshold(preCheckTokens.total, modelLimits.inputLimit)) {
 		workingHistory = await compactConversation(workingHistory, MODEL_NAME);
 	}
+
+	const messages = buildMessages(workingHistory);
 
 	let fullResponse = "";
 
@@ -80,11 +77,11 @@ export async function runAgent(
 					inputTokens: usage.input,
 					outputTokens: usage.output,
 					totalTokens: usage.total,
-					contextWindow: modelLimits.contextWindow,
+					inputLimit: modelLimits.inputLimit,
 					threshold: DEFAULT_THRESHOLD,
 					percentage: calculateUsagePercentage(
 						usage.total,
-						modelLimits.contextWindow,
+						modelLimits.inputLimit,
 					),
 				});
 			}
@@ -129,7 +126,6 @@ export async function runAgent(
 			break;
 		}
 
-		//finished reason
 		const finishReason = await result.finishReason;
 		const responseMessages = await result.responseMessages;
 		messages.push(...responseMessages);

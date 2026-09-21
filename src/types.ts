@@ -2,7 +2,7 @@ export interface TokenUsageInfo {
 	inputTokens: number;
 	outputTokens: number;
 	totalTokens: number;
-	contextWindow: number;
+	inputLimit: number;
 	threshold: number;
 	percentage: number;
 }
