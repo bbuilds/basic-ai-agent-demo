@@ -1,6 +1,7 @@
 import { openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { JUDGE_MODEL } from "../src/config.ts";
 import type {
 	EvalTarget,
 	MultiTurnResult,
@@ -44,7 +45,7 @@ export async function llmJudge(
 
 	try {
 		const result = await generateText({
-			model: openai(process.env.JUDGE_MODEL ?? "gpt-5.6-terra"),
+			model: openai(JUDGE_MODEL),
 			output: Output.object({
 				schema: judgeSchema,
 				name: "evaluation",

@@ -1,11 +1,7 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { openai } from "@ai-sdk/openai";
-import { Laminar, LaminarAiSdkTelemetry } from "@lmnr-ai/lmnr";
-import { type ModelMessage, registerTelemetry, streamText } from "ai";
-import dotenv from "dotenv";
+import { type ModelMessage, streamText } from "ai";
+import { AGENT_MODEL, MAX_STEPS } from "../config.ts";
 import type { AgentCallbacks, ToolCallInfo } from "../types.ts";
-
 import {
 	calculateUsagePercentage,
 	compactConversation,
@@ -14,32 +10,12 @@ import {
 	getModelLimits,
 	isOverThreshold,
 } from "./context/index.ts";
-
-// Load the .env that ships next to this package, so `demo-agent` works when
-// installed globally and run from any directory (not just the repo root).
-// `dist/agent/run.js` -> `<package root>/.env`
-const moduleDir = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(moduleDir, "../../.env"), quiet: true });
-// If the caller's cwd also has a .env (e.g. running from inside the repo
-// during development), let it override the bundled one.
-dotenv.config({ override: true, quiet: true });
-
 import { executeTool } from "./executeTool.ts";
 import { filterCompatibleMessages } from "./system/filterMessages.ts";
 import { SYSTEM_PROMPT } from "./system/prompt.ts";
-
 import { modelTools } from "./tools/index.ts";
 
-const MODEL_NAME = process.env.AGENT_MODEL ?? "gpt-5.6-luna";
-const MAX_STEPS = 25;
 const SYSTEM_MESSAGE: ModelMessage = { role: "system", content: SYSTEM_PROMPT };
-
-Laminar.initialize({ projectApiKey: process.env.LMNR_API_KEY });
-registerTelemetry(new LaminarAiSdkTelemetry());
-
-export async function shutdownAgent(): Promise<void> {
-	await Laminar.shutdown();
-}
 
 function summarizeProviderOutput(output: unknown): string {
 	if (typeof output === "string") return output;
@@ -51,7 +27,7 @@ export async function runAgent(
 	conversationHistory: ModelMessage[],
 	callbacks: AgentCallbacks,
 ): Promise<ModelMessage[]> {
-	const modelLimits = getModelLimits(MODEL_NAME);
+	const modelLimits = getModelLimits(AGENT_MODEL);
 	let workingHistory = filterCompatibleMessages(conversationHistory);
 
 	const estimateRequest = (msgs: ModelMessage[]) =>
@@ -60,7 +36,7 @@ export async function runAgent(
 	const userTurn: ModelMessage = { role: "user", content: userMessage };
 	const preCheckTokens = estimateRequest([...workingHistory, userTurn]);
 	if (isOverThreshold(preCheckTokens.total, modelLimits.inputLimit)) {
-		workingHistory = await compactConversation(workingHistory, MODEL_NAME);
+		workingHistory = await compactConversation(workingHistory, AGENT_MODEL);
 	}
 
 	const messages: ModelMessage[] = [...workingHistory, userTurn];
@@ -83,7 +59,7 @@ export async function runAgent(
 
 	for (let step = 0; step < MAX_STEPS; step++) {
 		const result = streamText({
-			model: openai(MODEL_NAME),
+			model: openai(AGENT_MODEL),
 			instructions: SYSTEM_PROMPT,
 			messages,
 			tools: modelTools,

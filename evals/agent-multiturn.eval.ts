@@ -1,4 +1,5 @@
 import { evaluate } from "@lmnr-ai/lmnr";
+import { LMNR_API_KEY } from "../src/config.ts";
 import dataset from "./data/agent-multiturn.json" with { type: "json" };
 import { llmJudge, toolOrderCorrect, toolsAvoided } from "./evaluators.ts";
 import { multiTurnWithMocks } from "./executors.ts";
@@ -44,7 +45,7 @@ evaluate({
 		},
 	},
 	config: {
-		projectApiKey: process.env.LMNR_API_KEY,
+		projectApiKey: LMNR_API_KEY,
 	},
 	groupName: "agent-multiturn",
 });

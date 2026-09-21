@@ -8,6 +8,7 @@ import {
 } from "ai";
 import { z } from "zod";
 import { SYSTEM_PROMPT } from "../src/agent/system/prompt.ts";
+import { AGENT_MODEL } from "../src/config.ts";
 import type {
 	EvalData,
 	MultiTurnEvalData,
@@ -75,9 +76,7 @@ export const singleTurnExecutorWithMocks = async (
 
 	try {
 		const { toolCalls: rawToolCalls } = await generateText({
-			model: openai(
-				data.config?.model ?? process.env.AGENT_MODEL ?? "gpt-5.6-luna",
-			),
+			model: openai(data.config?.model ?? AGENT_MODEL),
 			messages,
 			tools,
 			stopWhen: stepCountIs(1),
@@ -120,9 +119,7 @@ export async function multiTurnWithMocks(
 
 	try {
 		const result = await generateText({
-			model: openai(
-				data.config?.model ?? process.env.AGENT_MODEL ?? "gpt-5.6-luna",
-			),
+			model: openai(data.config?.model ?? AGENT_MODEL),
 			messages,
 			tools,
 			stopWhen: stepCountIs(data.config?.maxSteps ?? 20),

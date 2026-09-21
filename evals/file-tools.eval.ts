@@ -1,4 +1,5 @@
 import { evaluate } from "@lmnr-ai/lmnr";
+import { LMNR_API_KEY } from "../src/config.ts";
 import dataset from "./data/file-tools.json" with { type: "json" };
 import {
 	toolOrderCorrect,
@@ -47,7 +48,7 @@ evaluate({
 		toolsAvoided,
 	},
 	config: {
-		projectApiKey: process.env.LMNR_API_KEY,
+		projectApiKey: LMNR_API_KEY,
 	},
 	groupName: "file-tools-selection",
 });
