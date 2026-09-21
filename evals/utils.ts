@@ -7,13 +7,13 @@ import type { EvalData, MultiTurnEvalData } from "./types.ts";
  * Build message array from eval data
  */
 export const buildMessages = (
-  data: EvalData | { prompt?: string; systemPrompt?: string },
+	data: EvalData | { prompt?: string; systemPrompt?: string },
 ): ModelMessage[] => {
-  const systemPrompt = data.systemPrompt ?? SYSTEM_PROMPT;
-  return [
-    { role: "system", content: systemPrompt },
-    { role: "user", content: data.prompt! },
-  ];
+	const systemPrompt = data.systemPrompt ?? SYSTEM_PROMPT;
+	return [
+		{ role: "system", content: systemPrompt },
+		{ role: "user", content: data.prompt! },
+	];
 };
 
 /**
@@ -21,22 +21,22 @@ export const buildMessages = (
  * Each tool returns its configured mockReturn value.
  */
 export const buildMockedTools = (
-  mockTools: MultiTurnEvalData["mockTools"],
+	mockTools: MultiTurnEvalData["mockTools"],
 ): ToolSet => {
-  const tools: ToolSet = {};
+	const tools: ToolSet = {};
 
-  for (const [name, config] of Object.entries(mockTools)) {
-    const paramSchema: Record<string, z.ZodString> = {};
-    for (const paramName of Object.keys(config.parameters)) {
-      paramSchema[paramName] = z.string();
-    }
+	for (const [name, config] of Object.entries(mockTools)) {
+		const paramSchema: Record<string, z.ZodString> = {};
+		for (const paramName of Object.keys(config.parameters)) {
+			paramSchema[paramName] = z.string();
+		}
 
-    tools[name] = tool({
-      description: config.description,
-      inputSchema: z.object(paramSchema),
-      execute: async () => config.mockReturn,
-    });
-  }
+		tools[name] = tool({
+			description: config.description,
+			inputSchema: z.object(paramSchema),
+			execute: async () => config.mockReturn,
+		});
+	}
 
-  return tools;
+	return tools;
 };

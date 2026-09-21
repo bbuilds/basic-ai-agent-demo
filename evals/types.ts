@@ -5,33 +5,33 @@ import type { ModelMessage } from "ai";
  * Tests whether the LLM selects the correct tools without executing them.
  */
 export interface EvalData {
-  prompt: string;
-  systemPrompt?: string;
-  tools: string[];
-  config?: {
-    model?: string;
-    temperature?: number;
-  };
+	prompt: string;
+	systemPrompt?: string;
+	tools: string[];
+	config?: {
+		model?: string;
+		temperature?: number;
+	};
 }
 
 /**
  * Target expectations for single-turn evaluations
  */
 export interface EvalTarget {
-  expectedTools?: string[];
-  /** Ordered subsequence the tool calls must follow. Order is checked, adjacency is not. */
-  expectedToolOrder?: string[];
-  forbiddenTools?: string[];
-  category: "golden" | "secondary" | "negative";
+	expectedTools?: string[];
+	/** Ordered subsequence the tool calls must follow. Order is checked, adjacency is not. */
+	expectedToolOrder?: string[];
+	forbiddenTools?: string[];
+	category: "golden" | "secondary" | "negative";
 }
 
 /**
  * Result from single-turn executor
  */
 export interface SingleTurnResult {
-  toolCalls: Array<{ toolName: string; args: unknown }>;
-  toolNames: string[];
-  selectedAny: boolean;
+	toolCalls: Array<{ toolName: string; args: unknown }>;
+	toolNames: string[];
+	selectedAny: boolean;
 }
 
 /**
@@ -39,9 +39,9 @@ export interface SingleTurnResult {
  * Tools return fixed values for deterministic testing.
  */
 export interface MockToolConfig {
-  description: string;
-  parameters: Record<string, string>;
-  mockReturn: string;
+	description: string;
+	parameters: Record<string, string>;
+	mockReturn: string;
 }
 
 /**
@@ -49,60 +49,60 @@ export interface MockToolConfig {
  * Supports both fresh conversations and mid-conversation scenarios.
  */
 export interface MultiTurnEvalData {
-  prompt?: string;
-  messages?: ModelMessage[];
-  mockTools: Record<string, MockToolConfig>;
-  config?: {
-    model?: string;
-    maxSteps?: number;
-    temperature?: number;
-  };
+	prompt?: string;
+	messages?: ModelMessage[];
+	mockTools: Record<string, MockToolConfig>;
+	config?: {
+		model?: string;
+		maxSteps?: number;
+		temperature?: number;
+	};
 }
 
 /**
  * Target expectations for multi-turn evaluations
  */
 export interface MultiTurnTarget {
-  originalTask: string;
-  expectedToolOrder?: string[];
-  forbiddenTools?: string[];
-  mockToolResults: Record<string, string>;
-  category: "task-completion" | "conversation-continuation" | "negative";
-  rubric?: string;
+	originalTask: string;
+	expectedToolOrder?: string[];
+	forbiddenTools?: string[];
+	mockToolResults: Record<string, string>;
+	category: "task-completion" | "conversation-continuation" | "negative";
+	rubric?: string;
 }
 
 /**
  * Result from multi-turn executor
  */
 export interface MultiTurnResult {
-  text: string;
-  steps: Array<{
-    toolCalls?: Array<{ toolName: string; args: unknown }>;
-    toolResults?: Array<{ toolName: string; result: unknown }>;
-    text?: string;
-  }>;
-  toolsUsed: string[];
-  toolCallOrder: string[];
+	text: string;
+	steps: Array<{
+		toolCalls?: Array<{ toolName: string; args: unknown }>;
+		toolResults?: Array<{ toolName: string; result: unknown }>;
+		text?: string;
+	}>;
+	toolsUsed: string[];
+	toolCallOrder: string[];
 }
 
 /**
  * Single entry in a single-turn evaluation dataset
  */
 export interface SingleTurnDatasetEntry {
-  data: EvalData;
-  target: EvalTarget;
-  metadata?: {
-    description?: string;
-  };
+	data: EvalData;
+	target: EvalTarget;
+	metadata?: {
+		description?: string;
+	};
 }
 
 /**
  * Single entry in a multi-turn evaluation dataset
  */
 export interface MultiTurnDatasetEntry {
-  data: MultiTurnEvalData;
-  target: MultiTurnTarget;
-  metadata?: {
-    description?: string;
-  };
+	data: MultiTurnEvalData;
+	target: MultiTurnTarget;
+	metadata?: {
+		description?: string;
+	};
 }

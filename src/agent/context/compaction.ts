@@ -17,13 +17,13 @@ Conversation to summarize:
  * Format messages array as readable text for summarization
  */
 function messagesToText(messages: ModelMessage[]): string {
-  return messages
-    .map((msg) => {
-      const role = msg.role.toUpperCase();
-      const content = extractMessageText(msg);
-      return `[${role}]: ${content}`;
-    })
-    .join("\n\n");
+	return messages
+		.map((msg) => {
+			const role = msg.role.toUpperCase();
+			const content = extractMessageText(msg);
+			return `[${role}]: ${content}`;
+		})
+		.join("\n\n");
 }
 
 /**
@@ -37,31 +37,31 @@ function messagesToText(messages: ModelMessage[]): string {
  * The system prompt should be prepended by the caller.
  */
 export async function compactConversation(
-  messages: ModelMessage[],
-  model: string = "gpt-5-mini",
+	messages: ModelMessage[],
+	model: string = "gpt-5-mini",
 ): Promise<ModelMessage[]> {
-  const nonSystemMessages = messages.filter((msg) => msg.role !== "system");
+	const nonSystemMessages = messages.filter((msg) => msg.role !== "system");
 
-  if (nonSystemMessages.length === 0) {
-    return [];
-  }
+	if (nonSystemMessages.length === 0) {
+		return [];
+	}
 
-  const conversationText = messagesToText(nonSystemMessages);
+	const conversationText = messagesToText(nonSystemMessages);
 
-  const { text: summary } = await generateText({
-    model: openai(model),
-    prompt: `${SUMMARIZATION_PROMPT}${conversationText}`,
-  });
+	const { text: summary } = await generateText({
+		model: openai(model),
+		prompt: `${SUMMARIZATION_PROMPT}${conversationText}`,
+	});
 
-  return [
-    {
-      role: "user",
-      content: `Here is a summary of our conversation so far:\n\n${summary}`,
-    },
-    {
-      role: "assistant",
-      content:
-        "Got it, I have the context from our conversation so far. Let's continue.",
-    },
-  ];
+	return [
+		{
+			role: "user",
+			content: `Here is a summary of our conversation so far:\n\n${summary}`,
+		},
+		{
+			role: "assistant",
+			content:
+				"Got it, I have the context from our conversation so far. Let's continue.",
+		},
+	];
 }

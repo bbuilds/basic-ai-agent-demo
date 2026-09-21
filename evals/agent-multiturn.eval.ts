@@ -3,9 +3,9 @@ import dataset from "./data/agent-multiturn.json" with { type: "json" };
 import { llmJudge, toolOrderCorrect, toolsAvoided } from "./evaluators.ts";
 import { multiTurnWithMocks } from "./executors.ts";
 import type {
-  MultiTurnEvalData,
-  MultiTurnResult,
-  MultiTurnTarget,
+	MultiTurnEvalData,
+	MultiTurnResult,
+	MultiTurnTarget,
 } from "./types.ts";
 
 /**
@@ -25,26 +25,26 @@ import type {
  */
 
 const executor = async (data: MultiTurnEvalData): Promise<MultiTurnResult> => {
-  return multiTurnWithMocks(data);
+	return multiTurnWithMocks(data);
 };
 
 // Run the evaluation
 evaluate({
-  data: dataset as unknown as Array<{
-    data: MultiTurnEvalData;
-    target: MultiTurnTarget;
-  }>,
-  executor,
-  evaluators: {
-    toolOrderCorrect,
-    toolsAvoided,
-    outputQuality: async (output, target) => {
-      if (!target) return 1;
-      return llmJudge(output, target);
-    },
-  },
-  config: {
-    projectApiKey: process.env.LMNR_API_KEY,
-  },
-  groupName: "agent-multiturn",
+	data: dataset as unknown as Array<{
+		data: MultiTurnEvalData;
+		target: MultiTurnTarget;
+	}>,
+	executor,
+	evaluators: {
+		toolOrderCorrect,
+		toolsAvoided,
+		outputQuality: async (output, target) => {
+			if (!target) return 1;
+			return llmJudge(output, target);
+		},
+	},
+	config: {
+		projectApiKey: process.env.LMNR_API_KEY,
+	},
+	groupName: "agent-multiturn",
 });
