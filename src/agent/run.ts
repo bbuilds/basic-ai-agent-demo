@@ -41,6 +41,11 @@ export async function shutdownAgent(): Promise<void> {
 	await Laminar.shutdown();
 }
 
+function summarizeProviderOutput(output: unknown): string {
+	if (typeof output === "string") return output;
+	return JSON.stringify(output) ?? "done";
+}
+
 export async function runAgent(
 	userMessage: string,
 	conversationHistory: ModelMessage[],
@@ -96,12 +101,20 @@ export async function runAgent(
 			}
 			if (chunk.type === "tool-call") {
 				const input = chunk.input as Record<string, unknown>;
-				toolCalls.push({
-					toolCallId: chunk.toolCallId,
-					toolName: chunk.toolName,
-					args: input,
-				});
+				if (!chunk.providerExecuted) {
+					toolCalls.push({
+						toolCallId: chunk.toolCallId,
+						toolName: chunk.toolName,
+						args: input,
+					});
+				}
 				callbacks.onToolCallStart(chunk.toolName, input);
+			}
+			if (chunk.type === "tool-result" && chunk.providerExecuted) {
+				callbacks.onToolCallEnd(
+					chunk.toolName,
+					summarizeProviderOutput(chunk.output),
+				);
 			}
 			if (chunk.type === "error") {
 				streamError = chunk.error;
