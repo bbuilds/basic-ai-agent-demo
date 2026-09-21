@@ -31,6 +31,8 @@ import { SYSTEM_PROMPT } from "./system/prompt.ts";
 import { modelTools } from "./tools/index.ts";
 
 const MODEL_NAME = process.env.AGENT_MODEL ?? "gpt-5.6-luna";
+const MAX_STEPS = 25;
+const SYSTEM_MESSAGE: ModelMessage = { role: "system", content: SYSTEM_PROMPT };
 
 Laminar.initialize({ projectApiKey: process.env.LMNR_API_KEY });
 registerTelemetry(new LaminarAiSdkTelemetry());
@@ -47,46 +49,41 @@ export async function runAgent(
 	const modelLimits = getModelLimits(MODEL_NAME);
 	let workingHistory = filterCompatibleMessages(conversationHistory);
 
-	const buildMessages = (history: ModelMessage[]): ModelMessage[] => [
-		{ role: "system", content: SYSTEM_PROMPT },
-		...history,
-		{ role: "user", content: userMessage },
-	];
+	const estimateRequest = (msgs: ModelMessage[]) =>
+		estimateMessagesTokens([SYSTEM_MESSAGE, ...msgs]);
 
-	const preCheckTokens = estimateMessagesTokens(buildMessages(workingHistory));
+	const userTurn: ModelMessage = { role: "user", content: userMessage };
+	const preCheckTokens = estimateRequest([...workingHistory, userTurn]);
 	if (isOverThreshold(preCheckTokens.total, modelLimits.inputLimit)) {
 		workingHistory = await compactConversation(workingHistory, MODEL_NAME);
 	}
 
-	const messages = buildMessages(workingHistory);
+	const messages: ModelMessage[] = [...workingHistory, userTurn];
 
-	let fullResponse = "";
+	const reportTokenUsage = () => {
+		if (!callbacks.onTokenUsage) return;
+		const usage = estimateRequest(messages);
+		callbacks.onTokenUsage({
+			inputTokens: usage.input,
+			outputTokens: usage.output,
+			totalTokens: usage.total,
+			inputLimit: modelLimits.inputLimit,
+			threshold: DEFAULT_THRESHOLD,
+			percentage: calculateUsagePercentage(usage.total, modelLimits.inputLimit),
+		});
+	};
 
-	while (true) {
+	const responseParts: string[] = [];
+	let finished = false;
+
+	for (let step = 0; step < MAX_STEPS; step++) {
 		const result = streamText({
 			model: openai(MODEL_NAME),
+			instructions: SYSTEM_PROMPT,
 			messages,
 			tools: modelTools,
-			allowSystemInMessages: true,
 			onError: () => {},
 		});
-
-		const reportTokenUsage = () => {
-			if (callbacks.onTokenUsage) {
-				const usage = estimateMessagesTokens(messages);
-				callbacks.onTokenUsage({
-					inputTokens: usage.input,
-					outputTokens: usage.output,
-					totalTokens: usage.total,
-					inputLimit: modelLimits.inputLimit,
-					threshold: DEFAULT_THRESHOLD,
-					percentage: calculateUsagePercentage(
-						usage.total,
-						modelLimits.inputLimit,
-					),
-				});
-			}
-		};
 
 		const toolCalls: ToolCallInfo[] = [];
 		let currentText = "";
@@ -110,7 +107,7 @@ export async function runAgent(
 				streamError = chunk.error;
 			}
 		}
-		fullResponse += currentText;
+		if (currentText) responseParts.push(currentText);
 
 		if (streamError !== undefined) {
 			const message =
@@ -128,6 +125,7 @@ export async function runAgent(
 		reportTokenUsage();
 
 		if (finishReason !== "tool-calls" || toolCalls.length === 0) {
+			finished = true;
 			break;
 		}
 
@@ -149,7 +147,14 @@ export async function runAgent(
 		}
 	}
 
+	if (!finished) {
+		const notice = `Stopped after ${MAX_STEPS} steps without a final answer. Ask me to continue if you want me to keep going.`;
+		callbacks.onToken(notice);
+		responseParts.push(notice);
+		messages.push({ role: "assistant", content: notice });
+	}
+
+	const fullResponse = responseParts.join("\n\n");
 	callbacks.onComplete(fullResponse);
-	const [, ...history] = messages;
-	return history;
+	return messages;
 }
