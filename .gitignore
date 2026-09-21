@@ -53,3 +53,6 @@ Thumbs.db
 .wrangler/
 openspec/
 notes
+
+# Agent code-execution scratch files
+.agent-tmp/
