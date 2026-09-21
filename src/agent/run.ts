@@ -108,10 +108,11 @@ export async function runAgent(
 						args: input,
 					});
 				}
-				callbacks.onToolCallStart(chunk.toolName, input);
+				callbacks.onToolCallStart(chunk.toolCallId, chunk.toolName, input);
 			}
 			if (chunk.type === "tool-result" && chunk.providerExecuted) {
 				callbacks.onToolCallEnd(
+					chunk.toolCallId,
 					chunk.toolName,
 					summarizeProviderOutput(chunk.output),
 				);
@@ -143,8 +144,8 @@ export async function runAgent(
 		}
 
 		for (const tc of toolCalls) {
-			const toolResult = await executeTool(tc.toolName, tc.args);
-			callbacks.onToolCallEnd(tc.toolName, toolResult);
+			const toolResult = await executeTool(tc.toolName, tc.args, tc.toolCallId);
+			callbacks.onToolCallEnd(tc.toolCallId, tc.toolName, toolResult);
 
 			messages.push({
 				role: "tool",

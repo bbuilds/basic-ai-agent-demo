@@ -77,8 +77,12 @@ export interface MultiTurnTarget {
 export interface MultiTurnResult {
 	text: string;
 	steps: Array<{
-		toolCalls?: Array<{ toolName: string; args: unknown }>;
-		toolResults?: Array<{ toolName: string; result: unknown }>;
+		toolCalls?: Array<{ toolCallId: string; toolName: string; args: unknown }>;
+		toolResults?: Array<{
+			toolCallId: string;
+			toolName: string;
+			result: unknown;
+		}>;
 		text?: string;
 	}>;
 	toolsUsed: string[];

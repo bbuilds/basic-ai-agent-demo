@@ -136,12 +136,14 @@ export async function multiTurnWithMocks(
 			const stepToolCalls = (step.toolCalls ?? []).map((tc) => {
 				allToolCalls.push(tc.toolName);
 				return {
+					toolCallId: tc.toolCallId,
 					toolName: tc.toolName,
 					args: tc.input,
 				};
 			});
 
 			const stepToolResults = (step.toolResults ?? []).map((tr) => ({
+				toolCallId: tr.toolCallId,
 				toolName: tr.toolName,
 				result: tr.output,
 			}));

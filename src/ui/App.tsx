@@ -83,19 +83,21 @@ export function App() {
 						streamBuffer.current += token;
 						setStreamingText(streamBuffer.current);
 					},
-					onToolCallStart: (name, args) => {
+					onToolCallStart: (toolCallId, name, args) => {
 						// Text streamed before this call belongs above it in the transcript.
 						flushStream();
 						activeRef.current.push({
-							id: createId("tool"),
+							id: toolCallId,
 							name,
 							args,
 							status: "pending",
 						});
 						syncActive();
 					},
-					onToolCallEnd: (name, result) => {
-						const index = activeRef.current.findIndex((tc) => tc.name === name);
+					onToolCallEnd: (toolCallId, _name, result) => {
+						const index = activeRef.current.findIndex(
+							(tc) => tc.id === toolCallId,
+						);
 						if (index === -1) return;
 						const [finished] = activeRef.current.splice(index, 1);
 						syncActive();

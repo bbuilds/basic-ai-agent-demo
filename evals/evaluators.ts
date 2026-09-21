@@ -38,7 +38,7 @@ export async function llmJudge(
 		return calls.map((call) => ({
 			toolName: call.toolName,
 			args: call.args,
-			result: results.find((r) => r.toolName === call.toolName)?.result,
+			result: results.find((r) => r.toolCallId === call.toolCallId)?.result,
 		}));
 	});
 
