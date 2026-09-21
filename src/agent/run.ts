@@ -68,6 +68,7 @@ export async function runAgent(
 			messages,
 			tools: modelTools,
 			allowSystemInMessages: true,
+			onError: () => {},
 		});
 
 		const reportTokenUsage = () => {
@@ -89,41 +90,36 @@ export async function runAgent(
 
 		const toolCalls: ToolCallInfo[] = [];
 		let currentText = "";
-		let streamError: Error | null = null;
+		let streamError: unknown;
 
-		try {
-			for await (const chunk of result.stream) {
-				if (chunk.type === "text-delta") {
-					currentText += chunk.text;
-					callbacks.onToken(chunk.text);
-				}
-				if (chunk.type === "tool-call") {
-					const input = chunk.input as Record<string, unknown>;
-					toolCalls.push({
-						toolCallId: chunk.toolCallId,
-						toolName: chunk.toolName,
-						args: input,
-					});
-					callbacks.onToolCallStart(chunk.toolName, input);
-				}
+		for await (const chunk of result.stream) {
+			if (chunk.type === "text-delta") {
+				currentText += chunk.text;
+				callbacks.onToken(chunk.text);
 			}
-		} catch (error) {
-			streamError = error as Error;
-			if (
-				!currentText &&
-				!streamError.message.includes("No output generated")
-			) {
-				throw streamError;
+			if (chunk.type === "tool-call") {
+				const input = chunk.input as Record<string, unknown>;
+				toolCalls.push({
+					toolCallId: chunk.toolCallId,
+					toolName: chunk.toolName,
+					args: input,
+				});
+				callbacks.onToolCallStart(chunk.toolName, input);
+			}
+			if (chunk.type === "error") {
+				streamError = chunk.error;
 			}
 		}
 		fullResponse += currentText;
 
-		if (streamError && !currentText) {
-			fullResponse =
-				"I apologize, but I wasn't able to generate a response. The system is down";
-			callbacks.onToken(fullResponse);
-			messages.push({ role: "assistant", content: fullResponse });
-			break;
+		if (streamError !== undefined) {
+			const message =
+				streamError instanceof Error
+					? streamError.message
+					: String(streamError);
+			throw new Error(`Model request failed: ${message}`, {
+				cause: streamError,
+			});
 		}
 
 		const finishReason = await result.finishReason;
