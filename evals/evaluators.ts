@@ -6,7 +6,7 @@ import type {
 	MultiTurnResult,
 	MultiTurnTarget,
 	SingleTurnResult,
-} from "./types";
+} from "./types.ts";
 
 const judgeSchema = z.object({
 	score: z
