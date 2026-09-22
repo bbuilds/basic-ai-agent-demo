@@ -39,8 +39,7 @@ export interface SingleTurnResult {
  * Tools return fixed values for deterministic testing.
  */
 export interface MockToolConfig {
-	description: string;
-	parameters: Record<string, string>;
+	/** Fixed value the tool returns. Its name must match a real tool; the schema and description come from src/agent/tools. */
 	mockReturn: string;
 }
 
@@ -77,8 +76,12 @@ export interface MultiTurnTarget {
 export interface MultiTurnResult {
 	text: string;
 	steps: Array<{
-		toolCalls?: Array<{ toolName: string; args: unknown }>;
-		toolResults?: Array<{ toolName: string; result: unknown }>;
+		toolCalls?: Array<{ toolCallId: string; toolName: string; args: unknown }>;
+		toolResults?: Array<{
+			toolCallId: string;
+			toolName: string;
+			result: unknown;
+		}>;
 		text?: string;
 	}>;
 	toolsUsed: string[];

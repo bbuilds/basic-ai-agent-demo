@@ -54,15 +54,15 @@ export function getModelLimits(model: string): ModelLimits {
 
 export function isOverThreshold(
 	totalTokens: number,
-	contextWindow: number,
+	inputLimit: number,
 	threshold: number = DEFAULT_THRESHOLD,
 ): boolean {
-	return totalTokens >= contextWindow * threshold;
+	return totalTokens >= inputLimit * threshold;
 }
 
 export function calculateUsagePercentage(
 	totalTokens: number,
-	contextWindow: number,
+	inputLimit: number,
 ): number {
-	return (totalTokens / contextWindow) * 100;
+	return (totalTokens / inputLimit) * 100;
 }

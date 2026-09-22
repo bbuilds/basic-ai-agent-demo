@@ -1,12 +1,13 @@
 import { openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { JUDGE_MODEL } from "../src/config.ts";
 import type {
 	EvalTarget,
 	MultiTurnResult,
 	MultiTurnTarget,
 	SingleTurnResult,
-} from "./types";
+} from "./types.ts";
 
 const judgeSchema = z.object({
 	score: z
@@ -38,13 +39,13 @@ export async function llmJudge(
 		return calls.map((call) => ({
 			toolName: call.toolName,
 			args: call.args,
-			result: results.find((r) => r.toolName === call.toolName)?.result,
+			result: results.find((r) => r.toolCallId === call.toolCallId)?.result,
 		}));
 	});
 
 	try {
 		const result = await generateText({
-			model: openai(process.env.JUDGE_MODEL ?? "gpt-5.6-terra"),
+			model: openai(JUDGE_MODEL),
 			output: Output.object({
 				schema: judgeSchema,
 				name: "evaluation",

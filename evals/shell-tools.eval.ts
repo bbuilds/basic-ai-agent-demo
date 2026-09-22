@@ -1,8 +1,7 @@
 import { evaluate } from "@lmnr-ai/lmnr";
 import { LMNR_API_KEY } from "../src/config.ts";
-import dataset from "./data/file-tools.json" with { type: "json" };
+import dataset from "./data/shell-tools.json" with { type: "json" };
 import {
-	toolOrderCorrect,
 	toolSelectionScore,
 	toolsAvoided,
 	toolsSelected,
@@ -11,20 +10,19 @@ import { singleTurnExecutorWithMocks } from "./executors.ts";
 import type { EvalData, EvalTarget } from "./types.ts";
 
 /**
- * File Tools Selection Evaluation
+ * Shell Tool Selection Evaluation
  *
- * Tests whether the LLM correctly selects file-related tools
- * (readFile, writeFile, listFiles, deleteFile) based on user prompts.
+ * Tests whether the LLM reaches for runCommand when a task needs the shell,
+ * and leaves it alone for questions it can answer directly.
  *
  * Categories:
- * - golden: Must select specific expected tools
- * - secondary: Likely selects certain tools, scored on precision/recall
- * - negative: Must NOT select any file tools
+ * - golden: Must select runCommand (npm install, git status, ...)
+ * - secondary: Likely selects runCommand, scored on precision/recall
+ * - negative: Conceptual questions that must NOT run a command
  *
  * Evaluators:
- * - selectedExpected: Did golden prompts select every expected tool?
+ * - selectedExpected: Did golden prompts select runCommand?
  * - selectionScore: Precision/recall for ambiguous (secondary) prompts
- * - toolOrderCorrect: Were the calls made in the expected sequence?
  * - toolsAvoided: Were forbidden tools left alone?
  */
 
@@ -44,11 +42,10 @@ evaluate({
 			if (target?.category !== "secondary") return 1; // Skip for non-secondary
 			return toolSelectionScore(output, target);
 		},
-		toolOrderCorrect,
 		toolsAvoided,
 	},
 	config: {
 		projectApiKey: LMNR_API_KEY,
 	},
-	groupName: "file-tools-selection",
+	groupName: "shell-tools-selection",
 });

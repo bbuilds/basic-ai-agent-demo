@@ -4,13 +4,9 @@
 			"prompt": "Read package.json and tell me the project name",
 			"mockTools": {
 				"readFile": {
-					"description": "Read the contents of a file at the specified path",
-					"parameters": { "path": "string" },
 					"mockReturn": "{ \"name\": \"ai-agent-course\", \"version\": \"1.0.0\", \"description\": \"Build an AI agent from scratch\" }"
 				},
-				"shell": {
-					"description": "Execute a shell command and return its output",
-					"parameters": { "command": "string" },
+				"runCommand": {
 					"mockReturn": "command output here"
 				}
 			},
@@ -21,14 +17,14 @@
 		"target": {
 			"originalTask": "Read package.json and tell me the project name",
 			"expectedToolOrder": ["readFile"],
-			"forbiddenTools": ["shell"],
+			"forbiddenTools": ["runCommand"],
 			"mockToolResults": {
 				"readFile": "{ \"name\": \"ai-agent-course\", \"version\": \"1.0.0\", \"description\": \"Build an AI agent from scratch\" }"
 			},
 			"category": "task-completion"
 		},
 		"metadata": {
-			"description": "Fresh task: User asks to read a file and extract info. Should use readFile, not shell."
+			"description": "Fresh task: User asks to read a file and extract info. Should use readFile, not runCommand."
 		}
 	},
 	{
@@ -49,13 +45,9 @@
 			],
 			"mockTools": {
 				"listFiles": {
-					"description": "List all files and directories in the specified directory path",
-					"parameters": { "directory": "string" },
 					"mockReturn": "index.ts\nApp.tsx\ncomponents/\nutils/"
 				},
 				"readFile": {
-					"description": "Read the contents of a file at the specified path",
-					"parameters": { "path": "string" },
 					"mockReturn": "import { App } from './App';\n\nconsole.log('Starting application...');\nApp.run();"
 				}
 			},
@@ -81,13 +73,9 @@
 			"prompt": "What files are in the src directory?",
 			"mockTools": {
 				"listFiles": {
-					"description": "List all files and directories in the specified directory path",
-					"parameters": { "directory": "string" },
 					"mockReturn": "index.ts\nApp.tsx\ncomponents/"
 				},
-				"shell": {
-					"description": "Execute a shell command and return its output",
-					"parameters": { "command": "string" },
+				"runCommand": {
 					"mockReturn": "index.ts  App.tsx  components/"
 				}
 			},
@@ -98,14 +86,14 @@
 		"target": {
 			"originalTask": "What files are in the src directory?",
 			"expectedToolOrder": ["listFiles"],
-			"forbiddenTools": ["shell"],
+			"forbiddenTools": ["runCommand"],
 			"mockToolResults": {
 				"listFiles": "index.ts\nApp.tsx\ncomponents/"
 			},
 			"category": "negative"
 		},
 		"metadata": {
-			"description": "Negative: File listing task should use listFiles tool, NOT shell (ls command). Tests tool category preference."
+			"description": "Negative: File listing task should use listFiles tool, NOT runCommand (ls command). Tests tool category preference."
 		}
 	}
 ]

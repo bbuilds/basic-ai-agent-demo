@@ -32,7 +32,7 @@ export function TokenUsage({ usage }: TokenUsageProps) {
 				<Text dimColor>
 					{" "}
 					({usage.totalTokens.toLocaleString()} /{" "}
-					{usage.contextWindow.toLocaleString()} tokens, threshold{" "}
+					{usage.inputLimit.toLocaleString()} input tokens, threshold{" "}
 					{thresholdPercent}%)
 				</Text>
 			</Text>

@@ -1,6 +1,12 @@
+#!/usr/bin/env node
+import { Laminar, LaminarAiSdkTelemetry } from "@lmnr-ai/lmnr";
+import { registerTelemetry } from "ai";
 import { render, renderToString, Text } from "ink";
-import { shutdownAgent } from "./agent/run.ts";
+import { LMNR_API_KEY } from "./config.ts";
 import { App } from "./ui/index.tsx";
+
+Laminar.initialize({ projectApiKey: LMNR_API_KEY });
+registerTelemetry(new LaminarAiSdkTelemetry());
 
 process.stdout.write(
 	`${renderToString(
@@ -16,4 +22,4 @@ process.stdout.write(
 const { waitUntilExit } = render(<App />, { incrementalRendering: true });
 
 await waitUntilExit();
-await shutdownAgent();
+await Laminar.shutdown();

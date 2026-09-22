@@ -1,11 +1,7 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { openai } from "@ai-sdk/openai";
-import { Laminar, LaminarAiSdkTelemetry } from "@lmnr-ai/lmnr";
-import { type ModelMessage, registerTelemetry, streamText } from "ai";
-import dotenv from "dotenv";
+import { type ModelMessage, streamText } from "ai";
+import { AGENT_MODEL, MAX_STEPS } from "../config.ts";
 import type { AgentCallbacks, ToolCallInfo } from "../types.ts";
-
 import {
 	calculateUsagePercentage,
 	compactConversation,
@@ -14,29 +10,16 @@ import {
 	getModelLimits,
 	isOverThreshold,
 } from "./context/index.ts";
-
-// Load the .env that ships next to this package, so `demo-agent` works when
-// installed globally and run from any directory (not just the repo root).
-// `dist/agent/run.js` -> `<package root>/.env`
-const moduleDir = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(moduleDir, "../../.env"), quiet: true });
-// If the caller's cwd also has a .env (e.g. running from inside the repo
-// during development), let it override the bundled one.
-dotenv.config({ override: true, quiet: true });
-
 import { executeTool } from "./executeTool.ts";
 import { filterCompatibleMessages } from "./system/filterMessages.ts";
 import { SYSTEM_PROMPT } from "./system/prompt.ts";
-
 import { modelTools } from "./tools/index.ts";
 
-const MODEL_NAME = process.env.AGENT_MODEL ?? "gpt-5.6-luna";
+const SYSTEM_MESSAGE: ModelMessage = { role: "system", content: SYSTEM_PROMPT };
 
-Laminar.initialize({ projectApiKey: process.env.LMNR_API_KEY });
-registerTelemetry(new LaminarAiSdkTelemetry());
-
-export async function shutdownAgent(): Promise<void> {
-	await Laminar.shutdown();
+function summarizeProviderOutput(output: unknown): string {
+	if (typeof output === "string") return output;
+	return JSON.stringify(output) ?? "done";
 }
 
 export async function runAgent(
@@ -44,104 +27,101 @@ export async function runAgent(
 	conversationHistory: ModelMessage[],
 	callbacks: AgentCallbacks,
 ): Promise<ModelMessage[]> {
-	const modelLimits = getModelLimits(MODEL_NAME);
+	const modelLimits = getModelLimits(AGENT_MODEL);
 	let workingHistory = filterCompatibleMessages(conversationHistory);
 
-	const messages: ModelMessage[] = [
-		{ role: "system", content: SYSTEM_PROMPT },
-		...workingHistory,
-		{ role: "user", content: userMessage },
-	];
+	const estimateRequest = (msgs: ModelMessage[]) =>
+		estimateMessagesTokens([SYSTEM_MESSAGE, ...msgs]);
 
-	const preCheckTokens = estimateMessagesTokens([
-		{ role: "system", content: SYSTEM_PROMPT },
-		...workingHistory,
-		{ role: "user", content: userMessage },
-	]);
-
-	if (isOverThreshold(preCheckTokens.total, modelLimits.contextWindow)) {
-		workingHistory = await compactConversation(workingHistory, MODEL_NAME);
+	const userTurn: ModelMessage = { role: "user", content: userMessage };
+	const preCheckTokens = estimateRequest([...workingHistory, userTurn]);
+	if (isOverThreshold(preCheckTokens.total, modelLimits.inputLimit)) {
+		workingHistory = await compactConversation(workingHistory, AGENT_MODEL);
 	}
 
-	let fullResponse = "";
+	const messages: ModelMessage[] = [...workingHistory, userTurn];
 
-	while (true) {
+	const reportTokenUsage = () => {
+		if (!callbacks.onTokenUsage) return;
+		const usage = estimateRequest(messages);
+		callbacks.onTokenUsage({
+			inputTokens: usage.input,
+			outputTokens: usage.output,
+			totalTokens: usage.total,
+			inputLimit: modelLimits.inputLimit,
+			threshold: DEFAULT_THRESHOLD,
+			percentage: calculateUsagePercentage(usage.total, modelLimits.inputLimit),
+		});
+	};
+
+	const responseParts: string[] = [];
+	let finished = false;
+
+	for (let step = 0; step < MAX_STEPS; step++) {
 		const result = streamText({
-			model: openai(MODEL_NAME),
+			model: openai(AGENT_MODEL),
+			instructions: SYSTEM_PROMPT,
 			messages,
 			tools: modelTools,
-			allowSystemInMessages: true,
+			onError: () => {},
 		});
-
-		const reportTokenUsage = () => {
-			if (callbacks.onTokenUsage) {
-				const usage = estimateMessagesTokens(messages);
-				callbacks.onTokenUsage({
-					inputTokens: usage.input,
-					outputTokens: usage.output,
-					totalTokens: usage.total,
-					contextWindow: modelLimits.contextWindow,
-					threshold: DEFAULT_THRESHOLD,
-					percentage: calculateUsagePercentage(
-						usage.total,
-						modelLimits.contextWindow,
-					),
-				});
-			}
-		};
 
 		const toolCalls: ToolCallInfo[] = [];
 		let currentText = "";
-		let streamError: Error | null = null;
+		let streamError: unknown;
 
-		try {
-			for await (const chunk of result.stream) {
-				if (chunk.type === "text-delta") {
-					currentText += chunk.text;
-					callbacks.onToken(chunk.text);
-				}
-				if (chunk.type === "tool-call") {
-					const input = chunk.input as Record<string, unknown>;
+		for await (const chunk of result.stream) {
+			if (chunk.type === "text-delta") {
+				currentText += chunk.text;
+				callbacks.onToken(chunk.text);
+			}
+			if (chunk.type === "tool-call") {
+				const input = chunk.input as Record<string, unknown>;
+				if (!chunk.providerExecuted) {
 					toolCalls.push({
 						toolCallId: chunk.toolCallId,
 						toolName: chunk.toolName,
 						args: input,
 					});
-					callbacks.onToolCallStart(chunk.toolName, input);
 				}
+				callbacks.onToolCallStart(chunk.toolCallId, chunk.toolName, input);
 			}
-		} catch (error) {
-			streamError = error as Error;
-			if (
-				!currentText &&
-				!streamError.message.includes("No output generated")
-			) {
-				throw streamError;
+			if (chunk.type === "tool-result" && chunk.providerExecuted) {
+				callbacks.onToolCallEnd(
+					chunk.toolCallId,
+					chunk.toolName,
+					summarizeProviderOutput(chunk.output),
+				);
+			}
+			if (chunk.type === "error") {
+				streamError = chunk.error;
 			}
 		}
-		fullResponse += currentText;
+		if (currentText) responseParts.push(currentText);
 
-		if (streamError && !currentText) {
-			fullResponse =
-				"I apologize, but I wasn't able to generate a response. The system is down";
-			callbacks.onToken(fullResponse);
-			messages.push({ role: "assistant", content: fullResponse });
-			break;
+		if (streamError !== undefined) {
+			const message =
+				streamError instanceof Error
+					? streamError.message
+					: String(streamError);
+			throw new Error(`Model request failed: ${message}`, {
+				cause: streamError,
+			});
 		}
 
-		//finished reason
 		const finishReason = await result.finishReason;
 		const responseMessages = await result.responseMessages;
 		messages.push(...responseMessages);
 		reportTokenUsage();
 
 		if (finishReason !== "tool-calls" || toolCalls.length === 0) {
+			finished = true;
 			break;
 		}
 
 		for (const tc of toolCalls) {
-			const toolResult = await executeTool(tc.toolName, tc.args);
-			callbacks.onToolCallEnd(tc.toolName, toolResult);
+			const toolResult = await executeTool(tc.toolName, tc.args, tc.toolCallId);
+			callbacks.onToolCallEnd(tc.toolCallId, tc.toolName, toolResult);
 
 			messages.push({
 				role: "tool",
@@ -157,7 +137,14 @@ export async function runAgent(
 		}
 	}
 
+	if (!finished) {
+		const notice = `Stopped after ${MAX_STEPS} steps without a final answer. Ask me to continue if you want me to keep going.`;
+		callbacks.onToken(notice);
+		responseParts.push(notice);
+		messages.push({ role: "assistant", content: notice });
+	}
+
+	const fullResponse = responseParts.join("\n\n");
 	callbacks.onComplete(fullResponse);
-	const [, ...history] = messages;
-	return history;
+	return messages;
 }
