@@ -2,6 +2,7 @@ import { openai } from "@ai-sdk/openai";
 import { type ModelMessage, streamText } from "ai";
 import { AGENT_MODEL, MAX_STEPS } from "../config.ts";
 import type { AgentCallbacks, ToolCallInfo } from "../types.ts";
+import { requiresApproval } from "./approval.ts";
 import {
 	calculateUsagePercentage,
 	compactConversation,
@@ -16,6 +17,11 @@ import { SYSTEM_PROMPT } from "./system/prompt.ts";
 import { modelTools } from "./tools/index.ts";
 
 const SYSTEM_MESSAGE: ModelMessage = { role: "system", content: SYSTEM_PROMPT };
+
+const REJECTED_MESSAGE =
+	"Tool call rejected by the user. Do not retry it; explain what you were trying to do and ask how they would like to proceed.";
+const SKIPPED_MESSAGE =
+	"Skipped: the user rejected an earlier tool call in this batch.";
 
 function summarizeProviderOutput(output: unknown): string {
 	if (typeof output === "string") return output;
@@ -54,8 +60,23 @@ export async function runAgent(
 		});
 	};
 
+	const pushToolResult = (tc: ToolCallInfo, output: string) => {
+		messages.push({
+			role: "tool",
+			content: [
+				{
+					type: "tool-result",
+					toolCallId: tc.toolCallId,
+					toolName: tc.toolName,
+					output: { type: "text", value: output },
+				},
+			],
+		});
+	};
+
 	const responseParts: string[] = [];
 	let finished = false;
+	let stoppedByRejection = false;
 
 	for (let step = 0; step < MAX_STEPS; step++) {
 		const result = streamText({
@@ -119,25 +140,34 @@ export async function runAgent(
 			break;
 		}
 
+		let batchRejected = false;
+
 		for (const tc of toolCalls) {
+			if (batchRejected) {
+				callbacks.onToolCallEnd(tc.toolCallId, tc.toolName, SKIPPED_MESSAGE);
+				pushToolResult(tc, SKIPPED_MESSAGE);
+				continue;
+			}
+
+			const decision = requiresApproval(tc.toolName, tc.args)
+				? ((await callbacks.onToolApproval?.(tc)) ?? "once")
+				: "once";
+
+			if (decision === "reject") {
+				batchRejected = true;
+				stoppedByRejection = true;
+				callbacks.onToolCallEnd(tc.toolCallId, tc.toolName, REJECTED_MESSAGE);
+				pushToolResult(tc, REJECTED_MESSAGE);
+				continue;
+			}
+
 			const toolResult = await executeTool(tc.toolName, tc.args, tc.toolCallId);
 			callbacks.onToolCallEnd(tc.toolCallId, tc.toolName, toolResult);
-
-			messages.push({
-				role: "tool",
-				content: [
-					{
-						type: "tool-result",
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						output: { type: "text", value: toolResult },
-					},
-				],
-			});
+			pushToolResult(tc, toolResult);
 		}
 	}
 
-	if (!finished) {
+	if (!finished && !stoppedByRejection) {
 		const notice = `Stopped after ${MAX_STEPS} steps without a final answer. Ask me to continue if you want me to keep going.`;
 		callbacks.onToken(notice);
 		responseParts.push(notice);
