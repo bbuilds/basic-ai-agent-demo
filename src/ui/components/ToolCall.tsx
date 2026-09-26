@@ -5,7 +5,7 @@ import { summarizeArgs, truncate } from "../format.ts";
 export interface ToolCallProps {
 	name: string;
 	args?: unknown;
-	status: "pending" | "complete";
+	status: "pending" | "complete" | "rejected";
 	result?: string;
 }
 
@@ -25,11 +25,13 @@ export function ToolCall({ name, args, status, result }: ToolCallProps) {
 						{" "}
 						<InkSpinner type="dots" />
 					</Text>
+				) : status === "rejected" ? (
+					<Text color="red"> ✗</Text>
 				) : (
 					<Text color="green"> ✓</Text>
 				)}
 			</Box>
-			{status === "complete" && result ? (
+			{status !== "pending" && result ? (
 				<Box marginLeft={2}>
 					<Text dimColor>→ {truncate(result, 120)}</Text>
 				</Box>
