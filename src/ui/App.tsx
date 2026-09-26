@@ -1,8 +1,14 @@
 import type { ModelMessage } from "ai";
 import { Box, useApp } from "ink";
 import { useCallback, useRef, useState } from "react";
+import { allowsAlways } from "../agent/approval.ts";
 import { runAgent } from "../agent/run.ts";
-import type { TokenUsageInfo } from "../types.ts";
+import type {
+	ApprovalDecision,
+	TokenUsageInfo,
+	ToolCallInfo,
+} from "../types.ts";
+import { ApprovalPrompt } from "./components/ApprovalPrompt.tsx";
 import { Input } from "./components/Input.tsx";
 import {
 	Message,
@@ -30,10 +36,23 @@ export function App() {
 	const [streamingText, setStreamingText] = useState("");
 	const [activeToolCalls, setActiveToolCalls] = useState<ActiveToolCall[]>([]);
 	const [tokenUsage, setTokenUsage] = useState<TokenUsageInfo | null>(null);
+	const [pendingApproval, setPendingApproval] = useState<ToolCallInfo | null>(
+		null,
+	);
 
 	// Refs are the source of truth inside agent callbacks; state mirrors them for rendering.
 	const streamBuffer = useRef("");
 	const activeRef = useRef<ActiveToolCall[]>([]);
+	const approvalResolver = useRef<((d: ApprovalDecision) => void) | null>(null);
+	const alwaysAllowed = useRef<Set<string>>(new Set());
+	const rejectedIds = useRef<Set<string>>(new Set());
+
+	const resolveApproval = useCallback((decision: ApprovalDecision) => {
+		const resolve = approvalResolver.current;
+		approvalResolver.current = null;
+		setPendingApproval(null);
+		resolve?.(decision);
+	}, []);
 
 	const commit = useCallback((item: TranscriptItem) => {
 		setTranscript((prev) => [...prev, item]);
@@ -107,8 +126,28 @@ export function App() {
 							name: finished.name,
 							args: finished.args,
 							result,
+							rejected: rejectedIds.current.delete(toolCallId),
 						});
 					},
+					onToolApproval: (call) =>
+						new Promise<ApprovalDecision>((resolve) => {
+							if (alwaysAllowed.current.has(call.toolName)) {
+								resolve("once");
+								return;
+							}
+							approvalResolver.current = (decision) => {
+								if (decision === "always") {
+									alwaysAllowed.current.add(call.toolName);
+								}
+								if (decision === "reject") {
+									for (const tc of activeRef.current) {
+										rejectedIds.current.add(tc.id);
+									}
+								}
+								resolve(decision);
+							};
+							setPendingApproval(call);
+						}),
 					onComplete: () => {
 						// Ignore the accumulated response: anything before a tool call is already committed.
 						flushStream();
@@ -128,6 +167,9 @@ export function App() {
 					content: error instanceof Error ? error.message : String(error),
 				});
 			} finally {
+				approvalResolver.current = null;
+				setPendingApproval(null);
+				rejectedIds.current.clear();
 				activeRef.current = [];
 				syncActive();
 				setIsBusy(false);
@@ -136,7 +178,11 @@ export function App() {
 		[commit, exit, flushStream, history, syncActive],
 	);
 
-	const showSpinner = isBusy && !streamingText && activeToolCalls.length === 0;
+	const showSpinner =
+		isBusy &&
+		!streamingText &&
+		activeToolCalls.length === 0 &&
+		!pendingApproval;
 
 	return (
 		<Box flexDirection="column">
@@ -148,15 +194,27 @@ export function App() {
 					<Message role="assistant" content={streamingText} />
 				) : null}
 
-				{activeToolCalls.map((tc) => (
-					<ToolCall
-						key={tc.id}
-						name={tc.name}
-						args={tc.args}
-						status={tc.status}
-						result={tc.result}
+				{activeToolCalls
+					.filter((tc) => tc.id !== pendingApproval?.toolCallId)
+					.map((tc) => (
+						<ToolCall
+							key={tc.id}
+							name={tc.name}
+							args={tc.args}
+							status={tc.status}
+							result={tc.result}
+						/>
+					))}
+
+				{pendingApproval ? (
+					<ApprovalPrompt
+						key={pendingApproval.toolCallId}
+						toolName={pendingApproval.toolName}
+						args={pendingApproval.args}
+						allowAlways={allowsAlways(pendingApproval.toolName)}
+						onDecision={resolveApproval}
 					/>
-				))}
+				) : null}
 
 				{showSpinner ? (
 					<Box marginTop={1}>
@@ -165,7 +223,11 @@ export function App() {
 				) : null}
 
 				<Box marginTop={1}>
-					<Input onSubmit={handleSubmit} isBusy={isBusy} />
+					<Input
+						onSubmit={handleSubmit}
+						isBusy={isBusy}
+						isActive={!pendingApproval}
+					/>
 				</Box>
 
 				<Box marginTop={1}>
