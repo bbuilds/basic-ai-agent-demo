@@ -5,7 +5,14 @@ export type MessageRole = "user" | "assistant" | "error";
 
 export type TranscriptItem =
 	| { id: string; kind: "message"; role: MessageRole; content: string }
-	| { id: string; kind: "tool"; name: string; args?: unknown; result?: string };
+	| {
+			id: string;
+			kind: "tool";
+			name: string;
+			args?: unknown;
+			result?: string;
+			rejected?: boolean;
+	  };
 
 const ROLE_STYLES: Record<MessageRole, { label: string; color: string }> = {
 	user: { label: "› You", color: "blue" },
@@ -49,7 +56,7 @@ export function MessageList({ items }: MessageListProps) {
 						<ToolCall
 							name={item.name}
 							args={item.args}
-							status="complete"
+							status={item.rejected ? "rejected" : "complete"}
 							result={item.result}
 						/>
 					</Box>
