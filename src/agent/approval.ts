@@ -24,6 +24,7 @@ type ApprovalRule = boolean | ((args: Record<string, unknown>) => boolean);
 const TOOL_APPROVAL: Record<ToolName, ApprovalRule> = {
 	getDateTime: false,
 	listFiles: false,
+	searchFiles: false,
 	webSearch: false,
 	readFile: (args) => isSensitivePath(args.path),
 	writeFile: true,

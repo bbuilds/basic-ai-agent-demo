@@ -1,15 +1,17 @@
+import type { Dirent } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { tool } from "ai";
 import { z } from "zod";
+import { isSensitivePath } from "../approval.ts";
 
 const ROOT = process.cwd();
 
 class PathEscapeError extends Error {}
 
-function resolveSafe(inputPath: string): string {
-	const resolved = path.resolve(ROOT, inputPath);
-	if (resolved !== ROOT && !resolved.startsWith(ROOT + path.sep)) {
+function resolveSafe(inputPath: string, root = ROOT): string {
+	const resolved = path.resolve(root, inputPath);
+	if (resolved !== root && !resolved.startsWith(root + path.sep)) {
 		throw new PathEscapeError(`Path escapes allowed directory: ${inputPath}`);
 	}
 	return resolved;
@@ -148,37 +150,301 @@ export const writeFile = tool({
 	},
 });
 
+const SKIPPED_DIRS = new Set(["node_modules", ".git", "dist", ".agent-tmp"]);
+const MAX_LIST_ENTRIES = 500;
+const DEFAULT_SEARCH_RESULTS = 100;
+const MAX_SEARCH_RESULTS = 1000;
+const MAX_MATCH_LINE_CHARS = 200;
+const MAX_SEARCH_FILE_BYTES = 1024 * 1024;
+const BINARY_SNIFF_BYTES = 8000;
+
+interface WalkEntry {
+	entry: Dirent;
+	relativePath: string;
+	absolutePath: string;
+}
+
+const byName = (a: Dirent, b: Dirent) =>
+	a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+
+async function* walk(
+	dir: string,
+	recursive: boolean,
+	relativeDir = "",
+): AsyncGenerator<WalkEntry> {
+	const entries = await fs.readdir(dir, { withFileTypes: true });
+	entries.sort(byName);
+	for (const entry of entries) {
+		const relativePath = relativeDir
+			? `${relativeDir}/${entry.name}`
+			: entry.name;
+		const absolutePath = path.join(dir, entry.name);
+		yield { entry, relativePath, absolutePath };
+		if (recursive && entry.isDirectory() && !SKIPPED_DIRS.has(entry.name)) {
+			try {
+				yield* walk(absolutePath, true, relativePath);
+			} catch {}
+		}
+	}
+}
+
+export async function listDirectory(
+	directory = ".",
+	{
+		recursive = false,
+		maxEntries = MAX_LIST_ENTRIES,
+		root = ROOT,
+	}: { recursive?: boolean; maxEntries?: number; root?: string } = {},
+): Promise<string> {
+	try {
+		const safeDir = resolveSafe(directory, root);
+		const items: string[] = [];
+		let truncated = false;
+		for await (const { entry, relativePath } of walk(safeDir, recursive)) {
+			if (items.length === maxEntries) {
+				truncated = true;
+				break;
+			}
+			items.push(`${entry.isDirectory() ? "[dir]" : "[file]"} ${relativePath}`);
+		}
+		if (items.length === 0) {
+			return `Directory ${directory} is empty`;
+		}
+		if (truncated) {
+			items.push(
+				`[listing stopped at ${maxEntries} entries; list a subdirectory to see the rest]`,
+			);
+		}
+		return items.join("\n");
+	} catch (error) {
+		if (error instanceof PathEscapeError) {
+			return `Error: ${error.message}`;
+		}
+		const err = error as NodeJS.ErrnoException;
+		if (err.code === "ENOENT") {
+			return `Error: Directory not found: ${directory}`;
+		}
+		return `Error listing directory: ${err.message}`;
+	}
+}
+
 export const listFiles = tool({
 	description:
-		"List all files and directories in the specified directory path.",
+		"List the files and directories at a path. By default only the direct " +
+		"children are listed; set recursive: true to list everything below it. " +
+		"Recursive listings do not descend into node_modules, .git, dist, or " +
+		`.agent-tmp. Returns at most ${MAX_LIST_ENTRIES} entries and ends with a ` +
+		"note if the list was cut. To find text inside files, use searchFiles.",
 	inputSchema: z.object({
 		directory: z
 			.string()
 			.describe("The directory path to list contents of")
 			.default("."),
+		recursive: z
+			.boolean()
+			.optional()
+			.describe(
+				"List all nested files and directories too. Defaults to false.",
+			),
 	}),
-	execute: async ({ directory }: { directory: string }) => {
-		try {
-			const safeDir = resolveSafe(directory);
-			const entries = await fs.readdir(safeDir, { withFileTypes: true });
-			const items = entries.map((entry) => {
-				const type = entry.isDirectory() ? "[dir]" : "[file]";
-				return `${type} ${entry.name}`;
-			});
-			return items.length > 0
-				? items.join("\n")
-				: `Directory ${directory} is empty`;
-		} catch (error) {
-			if (error instanceof PathEscapeError) {
-				return `Error: ${error.message}`;
-			}
-			const err = error as NodeJS.ErrnoException;
-			if (err.code === "ENOENT") {
-				return `Error: Directory not found: ${directory}`;
-			}
-			return `Error listing directory: ${err.message}`;
+	execute: async ({
+		directory = ".",
+		recursive = false,
+	}: {
+		directory?: string;
+		recursive?: boolean;
+	}) => listDirectory(directory, { recursive }),
+});
+
+interface SearchTarget {
+	absolutePath: string;
+	relativePath: string;
+}
+
+async function* searchTargets(
+	searchRoot: string,
+): AsyncGenerator<SearchTarget> {
+	const stats = await fs.lstat(searchRoot);
+	if (stats.isFile()) {
+		yield {
+			absolutePath: searchRoot,
+			relativePath: path.basename(searchRoot),
+		};
+		return;
+	}
+	if (!stats.isDirectory()) {
+		throw new Error("not a regular file or directory");
+	}
+	for await (const { entry, relativePath, absolutePath } of walk(
+		searchRoot,
+		true,
+	)) {
+		if (entry.isFile()) {
+			yield { absolutePath, relativePath };
 		}
-	},
+	}
+}
+
+async function readSearchableText(filePath: string): Promise<string | null> {
+	try {
+		const stats = await fs.stat(filePath);
+		if (stats.size > MAX_SEARCH_FILE_BYTES) {
+			return null;
+		}
+		const buffer = await fs.readFile(filePath);
+		if (buffer.subarray(0, BINARY_SNIFF_BYTES).includes(0)) {
+			return null;
+		}
+		return buffer.toString("utf-8");
+	} catch {
+		return null;
+	}
+}
+
+function clipLine(line: string): string {
+	return line.length > MAX_MATCH_LINE_CHARS
+		? `${line.slice(0, MAX_MATCH_LINE_CHARS)} ... [clipped]`
+		: line;
+}
+
+function matchesGlob(relativePath: string, glob: string): boolean {
+	const subject = glob.includes("/")
+		? relativePath
+		: path.posix.basename(relativePath);
+	return path.matchesGlob(subject, glob);
+}
+
+export async function searchInFiles({
+	pattern,
+	path: searchPath = ".",
+	glob,
+	maxResults = DEFAULT_SEARCH_RESULTS,
+	root = ROOT,
+}: {
+	pattern: string;
+	path?: string;
+	glob?: string;
+	maxResults?: number;
+	root?: string;
+}): Promise<string> {
+	let regex: RegExp;
+	try {
+		regex = new RegExp(pattern);
+	} catch (error) {
+		return `Error: Invalid regex pattern: ${(error as Error).message}`;
+	}
+
+	try {
+		const safePath = resolveSafe(searchPath, root);
+		const matches: string[] = [];
+		let truncated = false;
+		let sensitiveSkipped = 0;
+
+		for await (const { absolutePath, relativePath } of searchTargets(
+			safePath,
+		)) {
+			if (glob && !matchesGlob(relativePath, glob)) {
+				continue;
+			}
+			const displayPath = path
+				.relative(root, absolutePath)
+				.split(path.sep)
+				.join("/");
+			if (isSensitivePath(displayPath)) {
+				sensitiveSkipped++;
+				continue;
+			}
+			const text = await readSearchableText(absolutePath);
+			if (text === null) {
+				continue;
+			}
+			const lines = text.split("\n");
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i].replace(/\r$/, "");
+				if (!regex.test(line)) {
+					continue;
+				}
+				if (matches.length === maxResults) {
+					truncated = true;
+					break;
+				}
+				matches.push(`${displayPath}:${i + 1}: ${clipLine(line)}`);
+			}
+			if (truncated) {
+				break;
+			}
+		}
+
+		const output =
+			matches.length > 0
+				? matches
+				: [`No matches for ${pattern} in ${searchPath}`];
+		if (truncated) {
+			output.push(
+				`[showing first ${maxResults} matches; narrow path or glob, or raise maxResults, to see more]`,
+			);
+		}
+		if (sensitiveSkipped > 0) {
+			output.push(
+				`[${sensitiveSkipped} sensitive file${sensitiveSkipped === 1 ? "" : "s"} skipped; use readFile (requires approval)]`,
+			);
+		}
+		return output.join("\n");
+	} catch (error) {
+		if (error instanceof PathEscapeError) {
+			return `Error: ${error.message}`;
+		}
+		const err = error as NodeJS.ErrnoException;
+		if (err.code === "ENOENT") {
+			return `Error: Path not found: ${searchPath}`;
+		}
+		return `Error searching files: ${err.message}`;
+	}
+}
+
+export const searchFiles = tool({
+	description:
+		"Search file contents for lines matching a JavaScript regular expression. " +
+		"Returns one line per match as 'path:line: text', with paths relative to " +
+		`the project root and lines longer than ${MAX_MATCH_LINE_CHARS} characters ` +
+		"clipped. Skips node_modules, .git, dist, .agent-tmp, binary files, files " +
+		"over 1 MB, and sensitive files such as .env. Ends with a note if results " +
+		"were cut. To see which files exist, use listFiles.",
+	inputSchema: z.object({
+		pattern: z
+			.string()
+			.min(1)
+			.describe(
+				"JavaScript regular expression to match against each line, e.g. 'function \\w+Tool' or 'TODO'. Case-sensitive.",
+			),
+		path: z
+			.string()
+			.optional()
+			.describe(
+				"File or directory to search, relative to the project root. Defaults to '.'.",
+			),
+		glob: z
+			.string()
+			.optional()
+			.describe(
+				"Only search files matching this glob, e.g. '*.ts' or 'src/**/*.tsx'. A glob without '/' matches file names; one with '/' matches paths relative to path.",
+			),
+		maxResults: z
+			.number()
+			.int()
+			.min(1)
+			.max(MAX_SEARCH_RESULTS)
+			.optional()
+			.describe(
+				`Maximum number of matching lines to return. Defaults to ${DEFAULT_SEARCH_RESULTS}.`,
+			),
+	}),
+	execute: async (args: {
+		pattern: string;
+		path?: string;
+		glob?: string;
+		maxResults?: number;
+	}) => searchInFiles(args),
 });
 
 export const deleteFile = tool({

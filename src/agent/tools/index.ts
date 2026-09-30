@@ -1,7 +1,13 @@
 import type { ToolSet } from "ai";
 import { executeCode } from "./codeExecution.ts";
 import { getDateTime } from "./dateTime.ts";
-import { deleteFile, listFiles, readFile, writeFile } from "./file.ts";
+import {
+	deleteFile,
+	listFiles,
+	readFile,
+	searchFiles,
+	writeFile,
+} from "./file.ts";
 import { runCommand } from "./shell.ts";
 import { webSearch } from "./webSearch.ts";
 
@@ -10,6 +16,7 @@ export const tools = {
 	deleteFile,
 	listFiles,
 	readFile,
+	searchFiles,
 	writeFile,
 	webSearch,
 	executeCode,
