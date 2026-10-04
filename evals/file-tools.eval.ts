@@ -14,7 +14,7 @@ import type { EvalData, EvalTarget } from "./types.ts";
  * File Tools Selection Evaluation
  *
  * Tests whether the LLM correctly selects file-related tools
- * (readFile, writeFile, listFiles, deleteFile) based on user prompts.
+ * (readFile, writeFile, listFiles, searchFiles, deleteFile) based on user prompts.
  *
  * Categories:
  * - golden: Must select specific expected tools

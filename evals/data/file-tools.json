@@ -2,7 +2,13 @@
 	{
 		"data": {
 			"prompt": "Read the contents of package.json",
-			"tools": ["readFile", "writeFile", "listFiles", "deleteFile"]
+			"tools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			]
 		},
 		"target": {
 			"expectedTools": ["readFile"],
@@ -16,11 +22,17 @@
 	{
 		"data": {
 			"prompt": "Show me all the files in the src directory",
-			"tools": ["readFile", "writeFile", "listFiles", "deleteFile"]
+			"tools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			]
 		},
 		"target": {
 			"expectedTools": ["listFiles"],
-			"forbiddenTools": ["writeFile", "deleteFile"],
+			"forbiddenTools": ["writeFile", "deleteFile", "searchFiles"],
 			"category": "golden"
 		},
 		"metadata": {
@@ -29,8 +41,54 @@
 	},
 	{
 		"data": {
+			"prompt": "Find every place in the code that mentions TODO",
+			"tools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			]
+		},
+		"target": {
+			"expectedTools": ["searchFiles"],
+			"forbiddenTools": ["writeFile", "deleteFile"],
+			"category": "golden"
+		},
+		"metadata": {
+			"description": "Content search request - should use searchFiles, not listFiles"
+		}
+	},
+	{
+		"data": {
+			"prompt": "Which files import zod?",
+			"tools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			]
+		},
+		"target": {
+			"expectedTools": ["searchFiles"],
+			"forbiddenTools": ["writeFile", "deleteFile"],
+			"category": "golden"
+		},
+		"metadata": {
+			"description": "Content search phrased as a file question - should use searchFiles"
+		}
+	},
+	{
+		"data": {
 			"prompt": "Create a new file called hello.txt with the content 'Hello World'",
-			"tools": ["readFile", "writeFile", "listFiles", "deleteFile"]
+			"tools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			]
 		},
 		"target": {
 			"expectedTools": ["writeFile"],
@@ -44,7 +102,13 @@
 	{
 		"data": {
 			"prompt": "Remove the old backup.txt file",
-			"tools": ["readFile", "writeFile", "listFiles", "deleteFile"]
+			"tools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			]
 		},
 		"target": {
 			"expectedTools": ["deleteFile"],
@@ -57,7 +121,13 @@
 	{
 		"data": {
 			"prompt": "What's in this project? Show me around.",
-			"tools": ["readFile", "writeFile", "listFiles", "deleteFile"]
+			"tools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			]
 		},
 		"target": {
 			"expectedTools": ["listFiles"],
@@ -71,7 +141,13 @@
 	{
 		"data": {
 			"prompt": "Help me understand the codebase structure",
-			"tools": ["readFile", "writeFile", "listFiles", "deleteFile"]
+			"tools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			]
 		},
 		"target": {
 			"expectedTools": ["listFiles", "readFile"],
@@ -86,10 +162,22 @@
 	{
 		"data": {
 			"prompt": "What is the capital of France?",
-			"tools": ["readFile", "writeFile", "listFiles", "deleteFile"]
+			"tools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			]
 		},
 		"target": {
-			"forbiddenTools": ["readFile", "writeFile", "listFiles", "deleteFile"],
+			"forbiddenTools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			],
 			"category": "negative"
 		},
 		"metadata": {
@@ -99,10 +187,22 @@
 	{
 		"data": {
 			"prompt": "Tell me a joke about programming",
-			"tools": ["readFile", "writeFile", "listFiles", "deleteFile"]
+			"tools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			]
 		},
 		"target": {
-			"forbiddenTools": ["readFile", "writeFile", "listFiles", "deleteFile"],
+			"forbiddenTools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			],
 			"category": "negative"
 		},
 		"metadata": {
@@ -112,10 +212,22 @@
 	{
 		"data": {
 			"prompt": "Calculate 25 * 17",
-			"tools": ["readFile", "writeFile", "listFiles", "deleteFile"]
+			"tools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			]
 		},
 		"target": {
-			"forbiddenTools": ["readFile", "writeFile", "listFiles", "deleteFile"],
+			"forbiddenTools": [
+				"readFile",
+				"writeFile",
+				"listFiles",
+				"searchFiles",
+				"deleteFile"
+			],
 			"category": "negative"
 		},
 		"metadata": {

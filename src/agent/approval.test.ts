@@ -5,6 +5,10 @@ import { allowsAlways, isSensitivePath, requiresApproval } from "./approval.ts";
 test("requiresApproval never gates read-only tools", () => {
 	assert.equal(requiresApproval("getDateTime", {}), false);
 	assert.equal(requiresApproval("listFiles", { directory: ".ssh" }), false);
+	assert.equal(
+		requiresApproval("searchFiles", { pattern: "KEY", path: ".env" }),
+		false,
+	);
 	assert.equal(requiresApproval("webSearch", { query: "anything" }), false);
 });
 
