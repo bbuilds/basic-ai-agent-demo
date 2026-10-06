@@ -1,6 +1,6 @@
 # AI Agent Learning Repo with Vercel's AI SDK
 
-This is a learning and compnanion repo for my [blog post covering the fundamentals of building an AI agent](https://brandenbuilds.com/ai-agents-101-with-vercel-ai-sdk).
+This is a learning and compnanion repo for my [blog post covering the fundamentals of building an AI agent](https://brandenbuilds.com/engineering-ai-agents-fundamentals-part-1).
 
 **What this repo IS NOT**
 - Starter repo
