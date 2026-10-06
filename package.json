@@ -1,9 +1,9 @@
 {
 	"name": "ai-agents-learning",
 	"version": "1.0.0",
-	"description": "",
+	"description": "Learning repo for building a CLI AI agent with Vercel's AI SDK",
 	"license": "ISC",
-	"author": "",
+	"author": "Branden <hello@brandenbuilds.com>",
 	"type": "module",
 	"bin": {
 		"demo-agent": "./dist/cli.js"
