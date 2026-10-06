@@ -1,6 +1,6 @@
 # AI Agent Learning Repo with Vercel's AI SDK
 
-This is a learning and compnanion repo for my [blog post covering the fundamentals of building an AI agent](https://brandenbuilds.com/engineering-ai-agents-fundamentals-part-1).
+This is a learning and companion repo for my [blog post covering the fundamentals of building an AI agent](https://brandenbuilds.com/engineering-ai-agents-fundamentals-part-1).
 
 **What this repo IS NOT**
 - Starter repo
@@ -8,7 +8,7 @@ This is a learning and compnanion repo for my [blog post covering the fundamenta
 
 ## Project Description
 
-A CLI agent made with Vercel's AI SDK that can be installed and run via `demo agent` from the terminal. As stated before, it's literally a learning repo to learn about creating tools, evals, observability, agent UIs, and more.
+A CLI agent made with Vercel's AI SDK that can be installed and run via `demo-agent` from the terminal. As stated before, it's literally a learning repo to learn about creating tools, evals, observability, agent UIs, and more.
 
 ## Getting Started
 
@@ -48,7 +48,7 @@ npm run build
 npm install -g
 ```
 
-then you can run `demo agent` from any directory in your terminal.
+then you can run `demo-agent` from any directory in your terminal.
 
 The global install links to this repo, so after changing code you only need to run `npm run build` again. If `demo-agent` says `permission denied`, reinstall the link to restore the executable bit:
 
